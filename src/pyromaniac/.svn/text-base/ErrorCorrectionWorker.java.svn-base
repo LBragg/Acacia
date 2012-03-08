@@ -1,0 +1,180 @@
+/*
+ * Acacia - GS-FLX & Titanium read error-correction and de-replication software.
+ * Copyright (C) <2011>  <Lauren Bragg and Glenn Stone - CSIRO CMIS & University of Queensland>
+ * 
+ * 	This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package pyromaniac;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+
+import pyromaniac.DataStructures.MID;
+import pyromaniac.GUI.TagInputPanel;
+import pyromaniac.IO.AcaciaLogger;
+
+public class ErrorCorrectionWorker extends SwingWorker<Void, Void> 
+{
+	HashMap <String, String> runSettings;
+	AcaciaLogger logger;
+	LinkedList <MID> validMIDS;
+	TagInputPanel parent;
+	Boolean workerFinished;
+	
+	//hidden constructor
+	@SuppressWarnings("unused")
+	private ErrorCorrectionWorker()
+	{
+		
+	}
+	
+	public ErrorCorrectionWorker(HashMap <String, String> settings, AcaciaLogger logger, LinkedList <MID> validMIDS, TagInputPanel parent)
+	{
+		//set up the worker
+		this.runSettings = settings;
+		this.logger = logger;
+		this.validMIDS = validMIDS;
+		this.parent = parent;
+		this.workerFinished = false;
+	}
+	
+	@Override
+	protected Void doInBackground() throws Exception 
+	{
+		ArrayList <String> filesCreated = new ArrayList <String> ();
+		boolean exceptionOccurred = false;
+		try
+		{
+			//AcaciaUtility.getUtility().removeLogFiles(this.logger); // removes the old log files from the logger
+			AcaciaUtility.getUtility().initLogFiles(this.runSettings, this.logger,true, validMIDS);
+			AcaciaUtility.getUtility().runAcacia(this.runSettings, this.validMIDS, logger, filesCreated, this);
+			logger.flushLogs();
+		}
+		catch(InterruptedException ie)
+		{
+			System.out.println(ie.getMessage());
+			ie.printStackTrace();
+			exceptionOccurred = true;
+		}
+		catch(Exception e)
+		{
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+			exceptionOccurred = true;
+		}
+		finally
+		{
+			if(! exceptionOccurred)
+			{
+				System.out.println("No exceptions occurred");
+				SwingUtilities.invokeLater(new FinishedRunnable(this.parent));
+				return null;
+			}
+			for(String filename: filesCreated)
+			{
+				File f = new File(filename);
+				
+				if(f.exists())
+				{
+					//this file was successfully opened apparently
+					
+					if(!f.canWrite())
+					{
+						throw new IOException("File from cancelled run could not be removed.");
+					}
+					else
+					{
+						f.delete();
+					}
+				}
+			}			
+			SwingUtilities.invokeLater(new CancelRunnable(this.parent));
+		}
+		return null;
+	}
+	
+	private class CancelRunnable implements Runnable
+	{
+		private TagInputPanel parent;
+		public CancelRunnable(TagInputPanel parent)
+		{
+			this.parent = parent;
+		}
+		public void run()
+		{
+			this.parent.workerCancelled();
+		}
+	}
+	
+	private class FinishedRunnable implements Runnable
+	{
+		private TagInputPanel parent;
+		public FinishedRunnable(TagInputPanel parent)
+		{
+			this.parent = parent;
+		}
+		public void run()
+		{
+			this.parent.workerFinished();
+		}
+	}
+
+	
+	 /*
+	 * Possibly override - # boolean cancel(boolean mayInterruptIfRunning)
+	# T get()
+	# T get(long timeout, TimeUnit unit)
+	# boolean isCancelled()
+	# boolean isDone(
+	 * 
+	 * 
+	 */	
+	
+	public void done()
+	{
+		//this is the clean up method after the thread has finished running
+		
+		//reset the GUI? invoke later?
+		
+		System.out.println("Done called");
+	}
+	
+	public void printCancellationMessage()
+	{
+		synchronized(this.workerFinished)
+		{
+			try
+			{
+				this.workerFinished = true;
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			this.workerFinished.notifyAll();
+		}
+	}
+	
+	public Boolean getWorkerFinished()
+	{
+		return this.workerFinished;
+	}
+}

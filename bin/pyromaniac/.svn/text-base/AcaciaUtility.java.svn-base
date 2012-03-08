@@ -1,0 +1,2808 @@
+/*
+ * Acacia - GS-FLX & Titanium read error-correction and de-replication software.
+ * Copyright (C) <2011>  <Lauren Bragg and Glenn Stone - CSIRO CMIS & University of Queensland>
+ * 
+ * 	This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+
+package pyromaniac;
+
+import java.awt.Color;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.swing.SwingWorker;
+
+import org.apache.commons.math.MathException;
+//import org.apache.commons.math.distribution.BinomialDistribution;
+//import org.apache.commons.math.distribution.BinomialDistributionImpl;
+
+import umontreal.iro.lecuyer.probdist.BinomialDist;
+
+
+import org.apache.commons.math.distribution.NormalDistributionImpl;
+import org.apache.commons.math.stat.inference.ChiSquareTestImpl;
+
+import pyromaniac.IO.AcaciaLogger;
+import pyromaniac.IO.LogFileHandle;
+import pyromaniac.IO.LoggerOutput;
+import pyromaniac.IO.MIDReader;
+import pyromaniac.IO.MIDReader.MIDFormatException;
+import pyromaniac.IO.MMFastaImporter2;
+import pyromaniac.IO.StandardOutputHandle;
+import pyromaniac.Algorithm.MaldeOUCallFrequencyTable;
+import pyromaniac.Algorithm.OUFrequencyTable;
+import pyromaniac.Algorithm.ThreadedAlignment;
+import pyromaniac.Algorithm.ThreadedAlignment.AlignmentColumn;
+import pyromaniac.DataStructures.MID;
+import pyromaniac.DataStructures.Pair;
+import pyromaniac.DataStructures.PatriciaTrie;
+import pyromaniac.DataStructures.Pyrotag;
+import pyromaniac.DataStructures.QuinceFrequencyTable;
+import pyromaniac.DataStructures.MutableInteger;
+import pyromaniac.DataStructures.Triplet;
+
+import org.biojava.bio.alignment.NeedlemanWunsch;
+import org.biojava.bio.alignment.SequenceAlignment;
+import org.biojava.bio.alignment.SmithWaterman;
+import org.biojava.bio.alignment.SubstitutionMatrix;
+import org.biojava.bio.program.das.dasalignment.Alignment;
+import org.biojava.bio.seq.DNATools;
+import org.biojava.bio.seq.Sequence;
+import org.biojava.bio.symbol.AlphabetManager;
+import org.biojava.bio.symbol.FiniteAlphabet;
+import org.biojava.bio.symbol.Symbol;
+import org.biojava.bio.symbol.SymbolList;
+
+
+
+
+public class AcaciaUtility 
+{
+
+	public static final String STATUS_USER_INTERACTING = "USER";
+	public static final String STATUS_USER_SUBMITTED = "SUBMITTED";
+	public static final String STATUS_USER_EXITED = "EXITED";
+
+	public static final Color FRAME_BACKGROUND_COLOUR = Color.decode("#F4E17A");
+	public static final String WATTLE_LOC;
+	public static final String ACACIA_LOGO;
+	public static final String DATE_FORMAT_NOW = "yyyyMMddHHmmss";
+
+	public static final String OPT_FASTA = "FASTA";
+	public static final String OPT_FASTA_LOC = "FASTA_LOCATION";
+	public static final String OPT_QUAL_LOC = "QUAL_LOCATION";
+	public static final String OPT_FASTQ = "FASTQ";
+	public static final String OPT_FASTQ_LOC = "FASTQ_LOCATION";
+	public static final String OPT_MID = "MID_OPTION";
+	public static final String OPT_MID_FILE = "MID_FILE";
+	public static final String OPT_PERFORM_CALL_CORR = "PERFORM_ERROR_CORRECTION";
+	public static final String OPT_TRIM_TO_LENGTH = "TRIM_TO_LENGTH";
+	public static final String OPT_OUTPUT_PREFIX = "OUTPUT_PREFIX";
+	public static final String OPT_OUTPUT_DIR = "OUTPUT_DIR";
+	public static final String OPT_LOAD_MIDS = "LOAD_MIDS";
+	public static final String OPT_ROCHE_5MID = "ROCHE_5MID";
+	public static final String OPT_ROCHE_10MID = "ROCHE_10MID";
+	public static final String OPT_NO_MID = "NO_MID";
+	public static final String OPT_SIGNIFICANCE_LEVEL = "SIGNIFICANCE_LEVEL";
+	public static final String OPT_REPRESENTATIVE_SEQ = "REPRESENTATIVE_SEQUENCE";
+	public static final String OPT_MIN_AVG_QUALITY = "AVG_QUALITY CUTOFF";
+	public static final String OPT_MODE_REPRESENTATIVE = "Mode";
+	public static final String OPT_MAX_REPRESENTATIVE = "Max";
+	public static final String OPT_MIN_REPRESENTATIVE = "Min";
+	public static final String OPT_MEDIAN_REPRESENTATIVE = "Median"; 
+	public static final String OPT_SPLIT_ON_MID = "SPLIT_ON_MID";
+	public static final String OPT_MAX_STD_DEV_LENGTH = "MAX_STD_DEV_LENGTH";
+	public static final String OPT_ERROR_MODEL = "ERROR_MODEL";
+	public static final String OPT_FLOWSIM_ERROR_MODEL = "Balzer";
+	public static final String OPT_PYRONOISE_ERROR_MODEL = "Quince";
+	public static final String OPT_FLOW_KEY = "FLOW_KEY";	
+	public static final String DEFAULT_OPT_FASTA = "TRUE";
+	public static final String DEFAULT_OPT_FASTQ = "FALSE";
+	public static final String DEFAULT_OPT_TRIM_LENGTH = "";
+	public static final String DEFAULT_OPT_MID = OPT_NO_MID;
+	public static final String DEFAULT_ALLOW_LOOKAHEAD = "FALSE";
+	public static final String DEFAULT_OPT_LOOKAHEAD = "TRUE";
+	public static final String DEFAULT_OPT_PERFORM_CALL_CORR = "TRUE";
+	public static final String DEFAULT_OPT_SIGNIFICANCE_LEVEL = "0.01";
+	public static final String DEFAULT_OPT_REPRESENTATIVE_SEQ = OPT_MODE_REPRESENTATIVE;
+	public static final String DEFAULT_OPT_MIN_AVG_QUALITY = "40";
+	public static final String DEFAULT_OPT_SPLIT_ON_MID = "TRUE";
+	public static final String DEFAULT_OPT_MAX_STD_DEV_LENGTH = "2";
+	public static final String DEFAULT_OPT_ERROR_MODEL = OPT_FLOWSIM_ERROR_MODEL;
+	public static final String DEFAULT_OPT_FLOW_KEY = "TACG";
+	public static final String MENU_STRING_EXIT = "Quit";
+	public static final String MENU_PROGRAM_INFO = "Program Info";
+	public static final String ROCHE_10MID_FILE;
+	public static final String ROCHE_5MID_FILE;
+	public static final String DEFAULT_FILE_LOC;
+	public static final String DEFAULT_OPT_MID_LOC;
+	public static final String DEFAULT_OPT_OUTPUT_PREFIX;
+	public static final String OPT_MAXIMUM_HAMMING_DIST = "MAXIMUM_HAMMING_DISTANCE"; //minimum hamming distance for recruiting near identical
+//	public static final String OPT_MAXIMUM_HAMMING_ALIGN = "MAXIMUM_HAMMING_DISTANCE_ALIGNMENT"; //min hamming distance for clustering, second pass
+	public static final String DEFAULT_OPT_MAXIMUM_HAMMING_DIST = "13";
+	public static final String DEFAULT_OPT_MAXIMUM_HAMMING_DIST_ALIGN = "21";
+	
+	public static final String BRANCH_OUT = "branches.out";
+	public static final String INDEX_OUT = "index.out";
+	public static final String CORRECTED_SEQS_OUT = "corrected_sequences.out";
+	public static final int MAXIMUM_BIN = 16;
+	static final int PREFIX_FOR_BRANCH_ESTIMATION = 100;
+	public static int NUM_REFERENCE_SEQUENCES = 0; //to be removed.
+	
+	
+	public static final MID NO_MID_GROUP = new MID("", "all_tags");
+
+	//need to be changed to relative to install.
+	static final String PYRONOISE_PROBES_LOCATION;
+	static final String STANDARD_OUT_NAME;
+	static final String STANDARD_ERR_NAME;
+	static final String STANDARD_DEBUG_NAME;
+
+	
+	public static final HashMap <Character, Character> flowCycle = new HashMap <Character, Character> ();
+	
+	public static final Character CYCLE_START = 'T';
+	private static final int DEFAULT_OPT_TRIM_COLLAPSED = 50;
+	private static final String STAT_OUT_FILE = "STATOUT";
+	private static final String SEQ_OUT_FILE = "SEQOUT";
+	private static final String REF_OUT_FILE = "REFOUT";
+	private static final String MAP_OUT_FILE = "MAPOUT";
+	private static final String SUBSTITUTION_MATRIX; 
+	
+	
+	static
+	{
+		flowCycle.put('T', 'A');
+		flowCycle.put('A', 'C');
+		flowCycle.put('C', 'G');
+		flowCycle.put('G', 'T');
+	}
+
+	private static HashMap <Character, char []> IUPAC_AMBIGUOUS_MAPPINGS = new HashMap<Character, char [] >();
+
+	
+	private static String [] settingKeys;
+	private static String [] settingValues;
+	
+	static 
+	{
+		ROCHE_10MID_FILE = null;
+		ROCHE_5MID_FILE = null;
+		DEFAULT_FILE_LOC = "." + AcaciaMain.getPlatformSpecificPathDivider();
+		
+		DEFAULT_OPT_MID_LOC = "data" + AcaciaMain.getPlatformSpecificPathDivider()
+		+ "ROCHE_5BASE_ACACIA.mids";
+		DEFAULT_OPT_OUTPUT_PREFIX = AcaciaMain.getPlatformSpecificPathDivider() + "Acacia_out";
+
+		WATTLE_LOC = "/images/acacia_small_wattle_icon.png";
+		ACACIA_LOGO = "/images/Acacia_logo2.png";
+		PYRONOISE_PROBES_LOCATION = "/data/QuinceProbs.csv";
+		SUBSTITUTION_MATRIX="/data/NUC.4.4";
+
+		STANDARD_OUT_NAME = "acacia_standard_output.txt";
+		STANDARD_ERR_NAME = "acacia_standard_error.txt";
+		STANDARD_DEBUG_NAME = "acacia_standard_debug.txt";
+
+		IUPAC_AMBIGUOUS_MAPPINGS.put('R', new char [] {'A', 'G'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('Y', new char [] {'C', 'T'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('S', new char [] {'G', 'C'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('W', new char [] {'A', 'T'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('K', new char [] {'G', 'T'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('M', new char [] {'A', 'C'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('B', new char [] {'C', 'G', 'T'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('D', new char [] {'A', 'G', 'T'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('H', new char [] {'A', 'C', 'T'});
+		IUPAC_AMBIGUOUS_MAPPINGS.put('V', new char [] {'A', 'C', 'G'});	
+		
+		String [] tmpSettingKeys = 
+		{
+				OPT_FASTA, 
+				OPT_FASTA_LOC, 
+				OPT_QUAL_LOC, 
+				OPT_FASTQ,
+				OPT_FASTQ_LOC, 
+				OPT_MID, 
+				OPT_MID_FILE, 
+				OPT_PERFORM_CALL_CORR,
+				OPT_TRIM_TO_LENGTH, 
+				OPT_OUTPUT_PREFIX,
+				OPT_OUTPUT_DIR, 
+				OPT_MAXIMUM_HAMMING_DIST, 
+				OPT_SIGNIFICANCE_LEVEL,
+				OPT_REPRESENTATIVE_SEQ,
+				OPT_MIN_AVG_QUALITY, 
+				OPT_SPLIT_ON_MID, 
+				OPT_MAX_STD_DEV_LENGTH,  //
+				OPT_ERROR_MODEL, 
+				OPT_FLOW_KEY
+		};
+		
+		String [] tmpSettingValues = 
+		{
+				DEFAULT_OPT_FASTA, 
+				DEFAULT_FILE_LOC, 
+				DEFAULT_FILE_LOC,
+				DEFAULT_OPT_FASTQ, 
+				DEFAULT_FILE_LOC, 
+				DEFAULT_OPT_MID,
+				DEFAULT_OPT_MID_LOC, 
+				DEFAULT_OPT_PERFORM_CALL_CORR,
+				DEFAULT_OPT_TRIM_LENGTH,
+				DEFAULT_OPT_OUTPUT_PREFIX, 
+				DEFAULT_FILE_LOC,
+				DEFAULT_OPT_MAXIMUM_HAMMING_DIST, 
+				DEFAULT_OPT_SIGNIFICANCE_LEVEL,
+				DEFAULT_OPT_REPRESENTATIVE_SEQ, 
+				DEFAULT_OPT_MIN_AVG_QUALITY, 
+				DEFAULT_OPT_SPLIT_ON_MID, 
+				DEFAULT_OPT_MAX_STD_DEV_LENGTH, //
+				DEFAULT_OPT_ERROR_MODEL, 
+				DEFAULT_OPT_FLOW_KEY
+		};
+		
+		settingKeys = tmpSettingKeys;
+		settingValues = tmpSettingValues;
+
+	}
+	
+
+
+
+	// Private constructor prevents instantiation from other classes
+	private AcaciaUtility() 
+	{
+	}
+
+	public static AcaciaUtility getUtility()
+	{
+		return AcaciaUtilityHolder.getInstance();
+	}
+	
+	//other thing may be number of reads filtered.
+	public void writeStats(BufferedReader stats, MID mid, int tagCount, int avgQuality, int avgLength, 
+			int avgCollapsedLength, int stdDev, int stdDevCollapsed)
+	{
+		//write stats to file in some format acceptable.
+	}
+	
+	
+	private LinkedList <ThreadedAlignment> correctClusters(AcaciaLogger logger, HashMap <String, LinkedList<Pyrotag>> clusters, HashMap<String, String> settings,
+			HashMap<String, BufferedWriter> outputHandles, HashMap<Pyrotag, Integer> representativeSeqs)
+	{
+		try
+		{
+			
+			logger.writeLog("Attempting to correct clusters", AcaciaLogger.LOG_DEBUG);
+			LinkedList <ThreadedAlignment> correctedBranches = new LinkedList<ThreadedAlignment>();
+		
+			int iterations = 0;
+			
+			//problem is sequences were not ???
+			for(String substr: clusters.keySet())
+			{
+				LinkedList <Pyrotag> cluster = clusters.get(substr); //get one of the original clusters...
+				
+				LinkedList <Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>>>  mainAlignRes = alignSequences(logger, correctedBranches, cluster, 
+						substr, settings, outputHandles, representativeSeqs); //aligned sequences returns an align object, and a updated flow position				
+				
+				
+				for(Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>> mainAlign: mainAlignRes)
+				{
+				
+					ArrayDeque <ThreadedAlignment> queue = new ArrayDeque<ThreadedAlignment>();
+				
+					queue.push(mainAlign.getFirst());
+				
+					while(queue.size() > 0)
+					{
+						iterations++;
+						
+						ThreadedAlignment ta = queue.pop();	 //grabs the results of the last run
+				
+						
+						//running over ta...
+						HashSet <HashSet <Pyrotag>> nonConforming = generateConsensusBranch(logger, correctedBranches, ta, 
+								cloneFlowHash(mainAlign.getSecond()), settings, false);
+						
+
+						//try generating a consensus branch....
+						LinkedList <ThreadedAlignment> splitTAs = ta.splitNonConforming(nonConforming);					
+		
+						for(ThreadedAlignment newTa : splitTAs)
+						{	
+							HashSet <HashSet<Pyrotag>> nonConformingInner = generateConsensusBranch(logger, correctedBranches, newTa, 
+									cloneFlowHash(mainAlign.getSecond()), settings, true);	
+							
+						//	System.out.println("Finished generating consensus branch");
+							//was processed.
+							//queue.addLast(newTa); //why do you do this, it looks like you are processing it anyhow?
+						}
+					}
+				}
+			}
+			//logger.writeLog("Finished correcting branches", AcaciaLogger.LOG_DEBUG);
+			return correctedBranches;
+		}
+		catch(Exception e)
+		{
+			System.out.println("Error: " + e.getMessage());
+			e.printStackTrace();
+		}
+		return null;
+		
+	}
+	
+	private HashMap <Pyrotag, Pair <Integer, Character>> cloneFlowHash(HashMap <Pyrotag, Pair <Integer, Character>> toClone)
+	{
+		HashMap <Pyrotag, Pair <Integer, Character>> clone = new HashMap <Pyrotag, Pair <Integer, Character>>();
+		
+		for(Pyrotag p: toClone.keySet())
+		{
+			Pair <Integer, Character> oldPair = toClone.get(p);
+			Pair <Integer, Character> newPair = new Pair <Integer, Character>(oldPair.getFirst(), oldPair.getSecond());
+			clone.put(p,newPair);
+		}
+		return clone;
+	}
+	
+	private HashMap <String, BufferedWriter> initOutputFiles(HashMap <String, String> settings, MID mid) throws IOException
+	{
+		String outDir = settings.get(AcaciaMain.OPT_OUTPUT_DIR);
+		String outputPrefix = settings.get(AcaciaUtility.OPT_OUTPUT_PREFIX);
+		
+		String midStr = (mid != null)? mid.getDescriptor() : "mid_unspecified";
+		
+		String statOut = outDir + getPlatformSpecificPathDivider() + outputPrefix + "_" + midStr + ".stats";
+		String seqOut = outDir + getPlatformSpecificPathDivider()+ outputPrefix +   "_" + midStr + ".seqOut";
+		String refOut = outDir + getPlatformSpecificPathDivider() + outputPrefix +  "_" + midStr +".refOut";
+		String mapOut = outDir + getPlatformSpecificPathDivider() + outputPrefix +  "_" + midStr +".mapOut";
+		
+		BufferedWriter statOutWriter = new BufferedWriter(new FileWriter(new File(statOut), false));
+		BufferedWriter seqOutWriter = new BufferedWriter(new FileWriter(new File (seqOut), false));
+		BufferedWriter refOutWriter = new BufferedWriter (new FileWriter (new File (refOut), false));
+		BufferedWriter mapOutWriter = new BufferedWriter (new FileWriter (new File (mapOut), false));
+		
+		HashMap <String, BufferedWriter> outputHandles = new HashMap <String, BufferedWriter>();
+		outputHandles.put(STAT_OUT_FILE, statOutWriter);
+		outputHandles.put(SEQ_OUT_FILE, seqOutWriter);
+		outputHandles.put(REF_OUT_FILE, refOutWriter);
+		outputHandles.put(MAP_OUT_FILE, mapOutWriter);
+		return outputHandles;
+	}
+	
+	private void closeOutputFiles(HashMap <String, BufferedWriter> outputHandles) throws IOException
+	{
+		for(String output : outputHandles.keySet())
+		{
+			outputHandles.get(output).close();
+		}
+	}
+	
+	private LinkedList <Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>>> alignSequences(AcaciaLogger logger, 
+			LinkedList <ThreadedAlignment> correctedBranches, LinkedList <Pyrotag> cluster, String consensus, 
+			HashMap <String, String> settings, HashMap <String, BufferedWriter> outputHandles,
+			HashMap<Pyrotag, Integer> representativeSeqs) throws Exception
+	{
+		
+		LinkedList <Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>>> allResults = new LinkedList 
+			<Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>>>();
+		
+		Triplet <ThreadedAlignment, HashMap <Pyrotag, Pair<Integer,Character>>, LinkedList <Pyrotag>> result = null;
+		
+		int ctr = 0;
+		
+		String currConsensus = consensus;
+		LinkedList <Pyrotag> currCluster = cluster;
+		
+		do
+		{
+			result = _alignSequences(logger, correctedBranches, currCluster, currConsensus, settings);
+			allResults.add(new Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>>(result.first, result.second));
+
+			//end
+			if(result.third.size() == 0)
+				break;
+			
+			
+			///end
+			if(result.third.size() == 1)
+			{
+				processSingleton(result.third.getFirst(), settings, outputHandles, representativeSeqs);
+				break;
+			}
+			
+			//is the hexamer dist ensuring like things are together?
+			
+			
+			Pair <String, Integer> consensusRes = this._alignSequencesHelper(logger, result.third); 
+			
+			//right, what choices do we have here, we don't want to recurse forever... if they don't have the same RLE, or there are less than N sequences?
+			//and no REAL progress is being made?
+			
+			
+			//it's not correcting everything, because the alignment algorithm won't tolerate substitutions, but the prefix trie won't tolerate
+			//any single-base insertions/deletions or substitutions.
+			
+			
+			//there doesn't seem to be any consensus in the RLE, and not much power with the number of sequences to align.
+			if(consensusRes.getSecond() == 1 && result.third.size() < 5)
+			{
+				
+				for(Pyrotag p: result.third)
+				{
+					processSingleton(p, settings, outputHandles, representativeSeqs);
+				}
+				
+				break; //we are done here too... TODO: what order to do this and trie in???
+			}
+			
+			//if there aren't vast improvements in the way things are being added.
+			if(ctr > 1 && currCluster.size() - result.third.size() <= 2) /*condition to use trie)*/
+			{
+					PatriciaTrie trie = new PatriciaTrie();
+					
+					for(Pyrotag p: result.third)
+					{
+						//do something
+						trie.insertString(new String(p.getCollapsedRead()), p);
+					}
+					
+					//okay so we have inserted all the RLE reads that are not aligning.
+					LinkedList <Pair <HashSet<Pyrotag>, String>> prefixSets = trie.getPrefixSets();
+					
+					
+					for(Pair <HashSet <Pyrotag>, String> pSet : prefixSets)
+					{
+						LinkedList <Pyrotag> prefixes = new LinkedList <Pyrotag> ();
+						prefixes.addAll(pSet.getFirst());
+
+						result = _alignSequences(logger, correctedBranches, prefixes, pSet.getSecond(), settings);
+						allResults.add(new Pair <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>>(result.first, result.second));
+					}
+					break; //this will be the end	
+			}
+			else
+			{
+				currConsensus = consensusRes.getFirst();
+				currCluster = result.third;
+			}
+			
+			ctr++;
+			
+		}while(result.third.size() > 0);
+				
+	//	outputHandles.get(AcaciaUtility.STAT_OUT_FILE).write("#Reads which could not be aligned:" + unalignable + " reads.");
+		return allResults;
+	}
+
+	private void processSingleton(Pyrotag singleton, HashMap <String, String> settings, HashMap <String, BufferedWriter> outputHandles,
+			HashMap<Pyrotag, Integer> representativeSeqs) throws Exception
+	{
+		this.outputSequence(outputHandles.get(AcaciaUtility.SEQ_OUT_FILE), new String(singleton.getProcessedString()), singleton);
+		this.outputSequence(outputHandles.get(AcaciaUtility.REF_OUT_FILE), new String(singleton.getProcessedString()), singleton);
+		String id = singleton.getID();
+		String toPrint = id  + "\t" + id + System.getProperty("line.separator");
+		outputHandles.get(AcaciaUtility.MAP_OUT_FILE).write(toPrint);
+		representativeSeqs.put(singleton,1); //singleton representative
+	}
+	
+	
+	private Triplet <ThreadedAlignment, HashMap <Pyrotag, Pair<Integer,Character>>, LinkedList <Pyrotag>> _alignSequences(AcaciaLogger logger, 
+			LinkedList <ThreadedAlignment> correctedBranches, LinkedList <Pyrotag> cluster, String consensus, 
+			HashMap <String, String> settings) throws Exception
+	{
+		ThreadedAlignment ta = new ThreadedAlignment(consensus, logger);	
+
+		int count = 0;
+		HashMap <Pyrotag, Pair <Integer, Character>> tagToCurrPosInFlow = 
+			new HashMap <Pyrotag, Pair<Integer, Character>>();
+
+
+		String key = settings.get(OPT_FLOW_KEY);
+		char lastInKey = key.charAt(key.length() - 1);
+
+
+		//sequences which could not be aligned... should be outputted already... and also the stats of these should be recorded.
+		
+		int unalignable = 0;
+		//prepare tag to flow position hash
+		
+		boolean verbose = false;
+		
+		LinkedList <Pyrotag> unalignableTags = new LinkedList <Pyrotag>();	
+		for(Pyrotag p: cluster)
+		{
+			boolean alignable = ta.align(p);
+
+			if(alignable)
+			{
+				count++;
+				int posAfterKeyAndMID = p.getFlowForCollapsedReadPos(settings.get(OPT_FLOW_KEY), 0);
+				MID mid = p.getMultiplexTag();
+				char currPos = (mid == AcaciaUtility.NO_MID_GROUP)? lastInKey : mid.getMID().charAt(mid.getMID().length() - 1);
+				tagToCurrPosInFlow.put(p, new Pair <Integer, Character>(posAfterKeyAndMID,currPos));			
+			}
+			else
+			{
+				//uncorrected
+				unalignableTags.add(p);				
+			}
+		}
+	
+		Triplet <ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>, LinkedList <Pyrotag>> result = new Triplet 
+		<ThreadedAlignment, HashMap <Pyrotag, Pair <Integer, Character>>, LinkedList <Pyrotag>> (ta, tagToCurrPosInFlow, unalignableTags);
+		return result;
+	}
+	
+	
+	
+	private Pair <String,Integer> _alignSequencesHelper(AcaciaLogger logger, LinkedList<Pyrotag> unalignable) throws Exception
+	{
+		//prepare sequences maybe? dunno really...
+		//sequences that made it into this thingy have a substitution. They should try to be aligned again. They may have an insertion error also.
+		int smallestRLELength = -1;
+		
+		for(Pyrotag p: unalignable)
+		{
+			char [] rle = p.getCollapsedRead();
+			
+			if(smallestRLELength == -1 || rle.length < smallestRLELength)
+			{
+				smallestRLELength = rle.length;
+			}
+		}
+		HashMap <String, Integer> mostCommonPrefix = new HashMap <String, Integer>();
+		
+		int mostCommon = -1;
+		String mostCommonSeq = null;
+	
+		for(Pyrotag p: unalignable)
+		{
+			char [] seq = p.getCollapsedRead();
+			char [] subseq = Arrays.copyOfRange(seq, 0, smallestRLELength);
+			
+			if(!mostCommonPrefix.containsKey(new String(subseq)))
+			{
+				mostCommonPrefix.put(new String(subseq), 0);
+			}
+			
+			int newValue = mostCommonPrefix.get(new String(subseq)) + 1;
+
+			if(mostCommon < newValue)
+			{
+				mostCommon = newValue;
+				mostCommonSeq = new String(subseq);
+			}
+			
+			mostCommonPrefix.put(new String(subseq), newValue);
+		}
+		
+		return new Pair <String, Integer> (mostCommonSeq, mostCommon);
+	}
+	
+	
+	private HashSet <HashSet <Pyrotag>>  generateConsensusBranch(AcaciaLogger logger, LinkedList <ThreadedAlignment> correctedBranches,
+			ThreadedAlignment ta, HashMap <Pyrotag, Pair <Integer, Character>> tagToCurrPosInFlow,
+			HashMap <String, String> settings, boolean varyIdentically) throws Exception
+	{	
+		
+		double thresholdPValue = Double.parseDouble(settings.get(OPT_SIGNIFICANCE_LEVEL));
+		
+		OUFrequencyTable table = null;
+		if(settings.get(OPT_ERROR_MODEL).equals(OPT_FLOWSIM_ERROR_MODEL))
+		{ 
+			table = new MaldeOUCallFrequencyTable(AcaciaMain.FLOWSIM_PROBS_LOCATION);
+		}
+		else
+		{
+			table = new QuinceFrequencyTable(AcaciaMain.PYRONOISE_PROBS_LOCATION);
+		}
+		
+		try
+		{	
+			Iterator <AlignmentColumn> it = ta.iterator();	
+			int numSignificant = 0;
+			
+			//option is to record the number of transgressions of a particular pyrotag? And also co-varying things?
+			
+			HashMap <Pyrotag, HashMap <Pyrotag, Integer>> varyingTogether = new HashMap <Pyrotag, HashMap <Pyrotag, Integer>> ();
+			HashMap <Pyrotag, Integer> numDifferences = new HashMap <Pyrotag, Integer>();
+			 
+			//iterate through the alignment columns
+
+			
+			//goes through all the alignment positions, identifies those that differ from the mode at each point, and splits them off
+			while(it.hasNext())
+			{
+				
+				AlignmentColumn ac = it.next();
+				
+				HypothesisTest test = processAlignmentColumn(logger, tagToCurrPosInFlow, ac, 
+						table, thresholdPValue, varyingTogether, numDifferences, varyIdentically);
+				
+				if(test.significant)
+				{
+					numSignificant++;
+				}
+				
+				//iterate through the inserion columns
+				AlignmentColumn firstInsert = ac.nextInsertionGivenLastFlow(ac.getValue());
+				AlignmentColumn lastInsert = firstInsert;
+				
+				do
+				{
+					if(lastInsert == null)
+						break;
+						
+					HypothesisTest testInner = processAlignmentColumn(logger, tagToCurrPosInFlow, lastInsert, 
+							table, thresholdPValue, varyingTogether, numDifferences, varyIdentically);
+					
+					lastInsert = ac.nextInsertionGivenLastFlow(lastInsert.getValue());
+					
+					if(testInner.significant)
+					{
+						numSignificant++;
+					}
+				}
+				while(lastInsert != firstInsert);
+			}
+			//at the end of all the iterations...
+
+			//logic - firstly, determine reads which should be split off from the branch..
+			
+			LinkedList <Pyrotag> tagsToRemove = new LinkedList <Pyrotag>();
+			
+			HashSet <Pyrotag> goingSolo = new HashSet <Pyrotag>();
+			
+			//if there was more than one error
+			for(Pyrotag p: numDifferences.keySet())
+			{
+				if(numDifferences.get(p) >= 1) //this is causing a problem... lets try those with any sig. diff.
+				{
+					tagsToRemove.add(p);
+					
+					if(!varyingTogether.containsKey(p))
+					{
+						HashSet <Pyrotag> soloP = new HashSet<Pyrotag>();
+						soloP.add(p);
+						ThreadedAlignment solo = ta.cloneAlignmentWithTags(soloP);
+						goingSolo.add(p);
+						correctedBranches.add(solo);
+					}
+				}
+			}
+	
+			HashSet <Pyrotag> tagsToKeep = new HashSet <Pyrotag>();
+			
+			for(Pyrotag p: ta.getAllTags())
+			{		
+				if(! tagsToRemove.contains(p))
+				{
+					tagsToKeep.add(p);
+				}
+			}
+		
+			if(tagsToKeep.size() > 0)
+			{
+				ThreadedAlignment main = ta.cloneAlignmentWithTags(tagsToKeep);
+				correctedBranches.add(main);
+			}
+				
+			HashMap <Pyrotag, HashSet <Pyrotag>> otherBranches = new HashMap <Pyrotag, HashSet <Pyrotag>> ();
+			
+			//identify which ones varied in the same direction,they can go into a new set.
+			//ideally, if one sequence does not vary with another all the time, or the set is too small.. should be broken up.
+		
+			for(Pyrotag p: varyingTogether.keySet())
+			{
+				//what is this doing
+				if( (! tagsToRemove.contains(p)) || goingSolo.contains(p))
+				{
+					continue;
+				}
+				
+				for(Pyrotag second : varyingTogether.get(p).keySet())
+				{	
+					if((!tagsToRemove.contains(second)) || goingSolo.contains(second))
+						continue;
+				
+					//this checks whether p or second should be put in the same cluster, if not, moves to the next pyrotag.
+					if(
+							varyingTogether.get(p).get(second)!= numDifferences.get(p) ||
+							varyingTogether.get(second).get(p) != numDifferences.get(second) 
+					)
+					{
+						continue;//both have to have the same number of differences... so complete linkage.
+					}	
+					
+					if(! (otherBranches.containsKey(p) && otherBranches.containsKey(second)))
+					{
+						HashSet <Pyrotag> newBranch = new HashSet <Pyrotag>();
+						newBranch.add(p);
+						newBranch.add(second);
+						otherBranches.put(p, newBranch);
+						otherBranches.put(second, newBranch);
+					}
+					else if(otherBranches.containsKey(p) && otherBranches.containsKey(second))
+					{
+						//check they are in the same cluster... otherwise, they possibly should be merged.
+						
+						if(otherBranches.get(p) != otherBranches.get(second))
+						{
+							HashSet <Pyrotag> merged = new HashSet <Pyrotag>();
+							merged.addAll(otherBranches.get(p));
+							merged.addAll(otherBranches.get(second));
+						
+							for(Pyrotag pMerged: merged)
+							{
+								otherBranches.put(pMerged, merged);
+							}
+						}
+					}
+					else if(otherBranches.containsKey(p))
+					{
+						otherBranches.get(p).add(second);
+					}
+					else if(otherBranches.containsKey(second))
+					{
+						otherBranches.get(second).add(p);
+					}
+				}
+			}			
+			
+			//lets handles those that could not be put with others... so more solo branches.
+			for(Pyrotag p: ta.getAllTags())
+			{
+				if(tagsToRemove.contains(p) && otherBranches.get(p) == null && ! goingSolo.contains(p)) //have not dealt with this tag...
+				{
+					HashSet <Pyrotag> soloP = new HashSet<Pyrotag>();
+					soloP.add(p);
+					ThreadedAlignment solo = ta.cloneAlignmentWithTags(soloP);
+					correctedBranches.add(solo);
+				}
+			}
+			
+			//detects all the new branches...
+			int numNewBranches = 0;
+			HashSet <HashSet <Pyrotag>> seenBefore  = new HashSet <HashSet <Pyrotag>>();
+			
+			for(Pyrotag p: otherBranches.keySet())
+			{
+				if(! seenBefore.contains(otherBranches.get(p)))
+				{
+					numNewBranches++;
+					seenBefore.add(otherBranches.get(p));
+				}
+			}
+			
+			//the last thingy...
+			if(varyIdentically)
+			{
+				//all these branches would have been those that vary identically
+				for(HashSet <Pyrotag> newBranch: seenBefore)
+				{
+					ThreadedAlignment newTa = ta.cloneAlignmentWithTags(newBranch);
+					correctedBranches.add(newTa);
+				}
+				return null;
+			}
+			
+			return seenBefore;
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			System.exit(1);
+		}
+		return null;
+	}
+	
+	
+	private HypothesisTest processAlignmentColumn(AcaciaLogger logger, HashMap <Pyrotag, Pair<Integer, Character>> tagToCurrPosInFlow, 
+			AlignmentColumn ac, OUFrequencyTable table, double thresholdPValue, 
+			HashMap<Pyrotag, HashMap<Pyrotag, Integer>> varyingTogether, 
+			HashMap<Pyrotag, Integer> numDifferences, boolean varyIdentically) throws Exception
+	{
+		HashMap <Integer, HashSet <Pyrotag>> observationsAtPosition = ac.getHPLengthToTags();
+		
+		int mode = -1;
+		int modeFreq = -1;
+		
+		HashMap <Integer, Integer> flowToNumReads = new HashMap <Integer, Integer>();
+		
+		char currValue = ac.getValue();
+
+		boolean verbose = false;
+		
+		for(Integer obsLength: observationsAtPosition.keySet())
+		{
+			//get tags that have the observed length.
+			HashSet <Pyrotag> tagsWithObsLength = observationsAtPosition.get(obsLength);
+		
+			//if the size is greater than the curr freq, than this must be the mode...
+			if(tagsWithObsLength.size() > modeFreq)
+			{
+				modeFreq = tagsWithObsLength.size();
+				mode = obsLength;
+			}
+
+			//for each of the pyrotags with this length
+			for(Pyrotag p : tagsWithObsLength)
+			{
+				//get previous position in flow
+				Pair <Integer, Character> prevPosInFlow = tagToCurrPosInFlow.get(p);
+			
+				//calculate the distance between the flows.
+				int dist = p.flowsBetweenLastFlowAndChar(prevPosInFlow.getSecond(), currValue);
+				
+				//curr position is prev flow pos + dist
+				int currPosInFlow = prevPosInFlow.getFirst() + dist;
+				
+				//store this value
+				tagToCurrPosInFlow.put(p, new Pair <Integer, Character> (currPosInFlow, currValue));
+				
+				//initialise flowToNumReads if not defined
+				if(!flowToNumReads.containsKey(currPosInFlow))
+				{
+					flowToNumReads.put(currPosInFlow, 0);
+				}
+				
+				//increment flowToNumReads
+				flowToNumReads.put(currPosInFlow, flowToNumReads.get(currPosInFlow) + 1);
+			}
+		}
+	
+		int obsBelow = 0;
+		int obsAbove = 0;
+		
+		for(Integer obsLength : observationsAtPosition.keySet())
+		{
+			if(obsLength > mode)
+			{
+				obsAbove += observationsAtPosition.get(obsLength).size();
+			}
+			else if(obsLength < mode)
+			{
+				obsBelow += observationsAtPosition.get(obsLength).size();
+			}
+		}
+		
+		HypothesisTest res = this._runTestForSignificance(logger, mode, obsBelow,obsAbove, modeFreq,  
+				flowToNumReads, table, thresholdPValue, verbose);
+		
+		//it was significantly different
+		//so why wasn't it ignored?
+		
+		if(res.significant)
+		{
+			for(Integer obsLength: observationsAtPosition.keySet())
+			{
+				if(obsLength != mode)
+				{
+					for(Pyrotag p: observationsAtPosition.get(obsLength))
+					{
+						if(! numDifferences.containsKey(p))
+						{
+							numDifferences.put(p, 0);	
+						}
+						numDifferences.put(p, numDifferences.get(p) + 1);	
+					}
+				}
+			}
+			
+			//splitting them via obs Above mode and obs below
+			
+			if(varyIdentically)
+			{
+				for(Integer obsLength: observationsAtPosition.keySet())
+				{
+					if(obsLength != mode)
+					{
+						
+						ArrayList <Pyrotag> same = new ArrayList <Pyrotag>(observationsAtPosition.get(obsLength));
+						
+						_varyingTogether(varyingTogether, same);
+					}
+				}
+			}
+			else
+			{
+				ArrayList <Pyrotag> obsAboveMode = new ArrayList <Pyrotag>();
+				ArrayList <Pyrotag> obsBelowMode = new ArrayList <Pyrotag>();
+				
+				for(Integer obsLength: observationsAtPosition.keySet())
+				{
+					if(obsLength != mode)
+					{
+						for(Pyrotag p : observationsAtPosition.get(obsLength))
+						{
+							if(obsLength < mode)
+							{
+								obsBelowMode.add(p);
+							}	
+							else if (obsLength > mode)
+							{
+								obsAboveMode.add(p);
+							}	
+						}
+					}
+				}
+				
+				_varyingTogether(varyingTogether, obsBelowMode);
+				_varyingTogether(varyingTogether, obsAboveMode);
+			}
+		}
+		return res;
+	}
+	
+	
+	private void _varyingTogether(HashMap<Pyrotag, HashMap<Pyrotag, Integer>> varyingTogether, ArrayList <Pyrotag> tags)
+	{
+		for(int i = 0; i < tags.size(); i++)
+		{
+			Pyrotag p = tags.get(i);
+			for(int j = i + 1; j < tags.size(); j++)
+			{
+				Pyrotag pInner = tags.get(j);
+				if(! varyingTogether.containsKey(p))
+				{
+					varyingTogether.put(p, new HashMap <Pyrotag, Integer>());
+				}
+				if(! varyingTogether.containsKey(pInner))
+				{
+					varyingTogether.put(pInner, new HashMap <Pyrotag, Integer>());
+				}
+
+				if(! varyingTogether.get(p).containsKey(pInner))
+				{
+					varyingTogether.get(p).put(pInner, 0);
+				}
+				if(! varyingTogether.get(pInner).containsKey(p))
+				{
+					varyingTogether.get(pInner).put(p, 0);
+				}
+
+				varyingTogether.get(p).put(pInner, varyingTogether.get(p).get(pInner) + 1);
+				varyingTogether.get(pInner).put(p, varyingTogether.get(pInner).get(p) + 1);
+			}
+		}
+	}
+	
+	
+
+	//do all the stuff required to make Acacia Work.
+	//this needs to check if the  sequence is unusable...
+	
+	public 	HashMap <String, LinkedList <Pyrotag>> generateClustersFrom(HashMap <String, String> settings, 
+			RunCharacterisation rc, LinkedList <MID> midsToProcess, HashMap<String, BufferedWriter> outputHandles, HashMap<Pyrotag, Integer> representativeSeqs) throws IOException
+	{
+		//this is returning an empty thing when length is 50.
+		
+		HashMap <String, LinkedList <Pyrotag>> perfectClusters = new HashMap <String, LinkedList <Pyrotag>>();
+		
+		double meanLength = rc.getMeanReadLengthForMID(midsToProcess);
+		double stdDevRead = rc.calculateLengthStandardDevForRead(midsToProcess);
+		double stdDevCollapsed = rc.calculateCollapsedLengthStandardDevForRead(midsToProcess);
+		
+		int numStdDev = Integer.parseInt(settings.get(OPT_MAX_STD_DEV_LENGTH));
+		
+		int minReadLength = (int) (meanLength - (numStdDev * stdDevRead));
+		int maxReadLength = (int) (meanLength + (numStdDev * stdDevRead));		
+		
+		int minCollapsedSize = DEFAULT_OPT_TRIM_COLLAPSED;
+
+		int minQual = Integer.parseInt(settings.get(OPT_MIN_AVG_QUALITY));
+		
+		int usableSeqs = 0;
+		int unusableSeqs = 0;
+		
+		
+		int lowQuality = 0;
+		int tooShort = 0;
+		int tooLong = 0;
+		int hasNs = 0;
+		int collapsedTooShort = 0;
+		
+		
+		int trimLength = this.getTrim(settings);
+		
+		HashMap <String, Integer> dereplicated = new HashMap<String, Integer>();
+		
+		
+		for(MID mid: midsToProcess)
+		{
+			LinkedList <Pyrotag> seqs = rc.MIDToSequences.get(mid);
+			
+			for(Pyrotag p: seqs)
+			{
+				double avgQuality = p.getTrimmedAverageQuality();
+				
+				p.setMultiplexTag(mid);
+				int readLength = p.getReadString().length;				
+				
+				
+				
+				//TODO: relationship between parameters trim collapsed vs full length.
+				
+				
+				char [] collapsed = p.getCollapsedRead();
+				
+				if(readLength >= trimLength && readLength >= minReadLength && readLength <= maxReadLength && collapsed.length >=  minCollapsedSize
+						&& (p.getQualities() == null || p.getUntrimmedAvgQuality() >= minQual) && ! p.hasNs())
+				{
+					
+					usableSeqs++;
+					if(trimLength >= 0)
+					{
+						p.setEndTrim(trimLength); //TODO check this works!
+					}
+					
+					char [] trimmedSequence = p.getProcessedString();
+					
+					if(! dereplicated.containsKey(new String(trimmedSequence)))
+					{
+						dereplicated.put(new String(trimmedSequence), 0);
+					}
+					
+					dereplicated.put(new String(trimmedSequence), dereplicated.get(new String(trimmedSequence) + 1));
+					
+					char [] trimmedCollapsed = Arrays.copyOf(collapsed, minCollapsedSize);
+					
+					String blah = new String(trimmedCollapsed);
+					
+					if(!perfectClusters.containsKey(blah))
+					{
+						perfectClusters.put(blah, new LinkedList <Pyrotag>());
+					}
+					perfectClusters.get(blah).add(p);
+				}
+				else
+				{	
+					if(readLength < minReadLength || readLength < trimLength)
+						tooShort++;
+					
+					if(readLength > maxReadLength)
+						tooLong++;
+					
+					if(p.hasNs())
+						hasNs++;
+					
+					if(p.getUntrimmedAvgQuality() < minQual)
+						lowQuality++;
+					
+					if(collapsed.length < minCollapsedSize)
+						collapsedTooShort++;
+					
+					//too small, throw out.
+					unusableSeqs++;
+				}
+			}
+		}
+		
+		outputHandles.get(STAT_OUT_FILE).write("#Seqs usable: " + usableSeqs + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Seqs thrown out: " + unusableSeqs + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Low quality: " + lowQuality + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Too short: " + tooShort + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Too long: " + tooLong + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Has N's: " + hasNs + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Collapsed too short: " + collapsedTooShort + System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("#Unique sequences: " + dereplicated.size() + System.getProperty("line.separator"));
+		
+		return perfectClusters;
+	}
+	
+	
+	
+	public void runAcacia(HashMap <String, String> settings, LinkedList <MID> validTags,  AcaciaLogger logger, ArrayList <String> filesCreated, ErrorCorrectionWorker worker) throws Exception
+	{
+		if(worker != null && worker.isCancelled())
+		{
+			throw new InterruptedException("Job cancelled");
+		}
+
+		logger.writeLog("Analysing file...", AcaciaLogger.LOG_PROGRESS);
+
+		if(worker != null && worker.isCancelled())
+		{
+			System.out.println("Failed 3");
+			throw new InterruptedException("Job cancelled");
+		}
+
+		// get stats of tags in file.
+		RunCharacterisation rc = this.prepareFileForClustering(logger, settings, validTags);
+
+		logger.writeLog("Pyrotag stats:", AcaciaLogger.LOG_PROGRESS);
+		if(worker != null && worker.isCancelled())
+		{
+			System.out.println("Failed 4");
+			throw new InterruptedException("Job cancelled");
+		}
+		//choice is either to provide tags, or no tags, process together, or separately.
+		
+		//this looks wrong to me... shouldn't print twice/
+		
+		if(settings.get(AcaciaUtility.OPT_SPLIT_ON_MID).equals("TRUE") && validTags.size() >= 1)
+		{
+			for(MID mid: validTags)
+			{
+				LinkedList <MID> mids = new LinkedList <MID>();
+				mids.add(mid);
+				
+				int tagCount = rc.getTagCountForMIDs(mids);
+				double avgQuality = rc.averageQualityForMIDs(mids);
+				double avgLength = rc.getMeanReadLengthForMID(mids);
+				double avgCollapsedLength = rc.getMeanCollapsedReadLengthForMID(mids);
+				double stdDev = rc.calculateLengthStandardDevForRead(mids);
+				double stdDevCollapsed = rc.calculateCollapsedLengthStandardDevForRead(mids);	
+				logger.writeLog("# " + tagCount  + " reads with MID: " + mid, AcaciaLogger.LOG_PROGRESS);
+				logger.writeLog("# " + avgQuality  + " avg. quality: " + mid, AcaciaLogger.LOG_PROGRESS);
+				logger.writeLog("# " + avgLength  + " avg. length: " + mid, AcaciaLogger.LOG_PROGRESS);
+				logger.writeLog("# " + avgCollapsedLength  + "avg. collapsed length: " + mid, AcaciaLogger.LOG_PROGRESS);
+				logger.writeLog("# " + stdDev  + " stdDev of read lengths: " + mid, AcaciaLogger.LOG_PROGRESS);
+				logger.writeLog("# " + stdDevCollapsed  + " stdDev of collapsed read lengths: " + mid, AcaciaLogger.LOG_PROGRESS);
+			}
+		}
+		
+		if(settings.get(AcaciaUtility.OPT_SPLIT_ON_MID).equals("FALSE") && validTags.size() > 1)
+		{
+			int tagCount = rc.getTagCountForMIDs(validTags);
+			double avgQuality = rc.averageQualityForMIDs(validTags);
+			double avgLength = rc.getMeanReadLengthForMID(validTags);
+			double avgCollapsedLength = rc.getMeanCollapsedReadLengthForMID(validTags);
+			double stdDev = rc.calculateLengthStandardDevForRead(validTags);
+			double stdDevCollapsed = rc.calculateCollapsedLengthStandardDevForRead(validTags);	
+			logger.writeLog("# " + tagCount  + " reads with MID: combined", AcaciaLogger.LOG_PROGRESS);
+			logger.writeLog("# " + avgQuality  + " avg. quality: combined", AcaciaLogger.LOG_PROGRESS);
+			logger.writeLog("# " + avgLength  + " avg. length: combined", AcaciaLogger.LOG_PROGRESS);
+			logger.writeLog("# " + avgCollapsedLength  + "avg. collapsed length: combined", AcaciaLogger.LOG_PROGRESS);
+			logger.writeLog("# " + stdDev  + " stdDev of read lengths: combined", AcaciaLogger.LOG_PROGRESS);
+			logger.writeLog("# " + stdDevCollapsed  + " stdDev of collapsed read lengths: combined", AcaciaLogger.LOG_PROGRESS);
+		}
+
+		boolean trimDefined = this.trimDefined(settings);
+
+		if(worker != null && worker.isCancelled())
+		{
+			System.out.println("Failed 6");
+			throw new InterruptedException("Job cancelled");
+		}
+
+		//the program *should* keep checking if the worker is cancelled :(
+		
+		if(settings.get(AcaciaUtility.OPT_SPLIT_ON_MID).equals("FALSE") || validTags.size() == 1)
+		{
+			HashMap <Pyrotag, Integer> representativeSeqs = new HashMap <Pyrotag, Integer> ();
+	
+			MID appropriateMID = null;
+			
+			if(validTags.size() == 1)
+			{
+				appropriateMID = validTags.get(0);
+			}
+			else
+			{
+				appropriateMID = AcaciaUtility.NO_MID_GROUP;
+			}
+			
+			
+			HashMap <String, BufferedWriter> outputHandles = this.initOutputFiles(settings, appropriateMID); //not sure if this is the right thing to do
+
+			HashMap <String, LinkedList <Pyrotag>> perfectClusters =  generateClustersFrom(settings, rc, validTags,
+					outputHandles, representativeSeqs);
+			
+			
+			
+			
+			logger.writeLog("There are " + perfectClusters.size() + "RLE prefix clusters", AcaciaLogger.LOG_PROGRESS);			
+			
+			HammingClustering hc = recruitErroneousReads(perfectClusters, settings, logger, outputHandles); //not sure if the OH is needed for now.
+
+			logger.writeLog("There are " + perfectClusters.size() + "RLE prefix clusters after hexamer recruiting", AcaciaLogger.LOG_PROGRESS);
+			
+			//erroneous reads are recruited at this point, so should be getting some reads that are different from the rep. seq.
+			logger.writeLog("There are " + representativeSeqs.size() + " representative sequences after hexamer recruiting",AcaciaLogger.LOG_PROGRESS);
+			
+			LinkedList <ThreadedAlignment> consensusAligns = correctClusters(logger, perfectClusters, settings,outputHandles, 
+					representativeSeqs);
+
+			logger.writeLog("There are " + representativeSeqs.size() + " representative sequences after cluster correction", AcaciaLogger.LOG_PROGRESS);
+			
+			try
+			{
+				outputResults(consensusAligns, settings, logger, outputHandles, representativeSeqs);
+				//potentially form OTU's at this point...
+			}
+			catch(Exception e)
+			{
+				logger.writeLog("An exception occurred whilst outputting results!", AcaciaLogger.LOG_DEBUG);
+				logger.writeLog(e.getMessage(), AcaciaLogger.LOG_DEBUG);
+				e.printStackTrace();
+			}
+				
+				
+			System.out.println("There are " + representativeSeqs.size() + " representative sequences after outputting results");
+			//generateOTUs(settings, representativeSeqs, hc.hexes, hc.lastIndex,hc.subStringLength);
+		}
+		else
+		{
+			for(MID m: validTags)
+			{
+				HashMap <Pyrotag, Integer> representativeSeqs = new HashMap <Pyrotag, Integer> ();
+				HashMap <String, BufferedWriter> outputHandles = this.initOutputFiles(settings, m);
+				LinkedList <MID> midsToProcess = new LinkedList <MID>();
+				midsToProcess.add(m);
+				
+				HashMap <String, LinkedList <Pyrotag>> perfectClusters = generateClustersFrom(settings, rc, midsToProcess, 
+						outputHandles, representativeSeqs);
+				
+
+				
+				
+				logger.writeLog("There are " + perfectClusters.size() + " clusters using perfect identity", AcaciaLogger.LOG_PROGRESS);
+				HammingClustering hc = recruitErroneousReads(perfectClusters, settings, logger, outputHandles);
+				
+				logger.writeLog("After recruiting erroneous reads, there are " + perfectClusters.size() + " RLE clusters", AcaciaLogger.LOG_PROGRESS);
+				
+				logger.writeLog("There are " + representativeSeqs.size() + " representative sequences after recruiting", AcaciaLogger.LOG_PROGRESS);
+				LinkedList <ThreadedAlignment> consensusAligns = correctClusters(logger, perfectClusters, settings, outputHandles, representativeSeqs);
+				
+				logger.writeLog("There are " + representativeSeqs.size() + " representative sequences after cluster correction", AcaciaLogger.LOG_PROGRESS);
+				
+				try
+				{
+					outputResults(consensusAligns, settings,  logger, outputHandles,representativeSeqs);
+				}
+				catch(Exception e)
+				{
+					logger.writeLog("An exception occurred whilst outputting results!", AcaciaLogger.LOG_DEBUG);
+					logger.writeLog(e.getMessage(), AcaciaLogger.LOG_DEBUG);
+					e.printStackTrace();
+				}
+				System.out.println("There are " + representativeSeqs.size() + " representative sequences after outputting results");
+			}
+		}
+		
+		logger.writeLog("Finished: " + Thread.currentThread().getName(), AcaciaLogger.LOG_PROGRESS);
+	}   
+	
+	private class HammingClustering
+	{
+		private MutableInteger lastIndex;
+		private int subStringLength;
+		HashMap <String, Integer> hexes;
+		
+		public HammingClustering(HashMap <String, Integer> hexes, MutableInteger lastIndex, int subStringLength)
+		{
+			this.hexes = hexes;
+			this.lastIndex = lastIndex;
+			this.subStringLength = subStringLength;
+		}
+	}
+	
+	/*private void generateOTUs(HashMap <String, String> settings, HashMap<Pyrotag, Integer> representativeSeqs, HashMap<String, Integer> hexToPos, 
+			MutableInteger hexPos, int length)
+	{
+		HashMap <Pyrotag, HashSet <Pyrotag>> OTUS = new HashMap <Pyrotag, HashSet <Pyrotag>> ();
+		Set <Pyrotag> keys = representativeSeqs.keySet();
+		Object [] tags = keys.toArray();	
+		System.out.println("There are " + tags.length + " representative sequences");
+		
+		HashMap <Pyrotag, int []> hexProfiles = new HashMap <Pyrotag, int []>();
+		
+		int maxHexDist = Integer.parseInt(settings.get(AcaciaUtility.OPT_MAXIMUM_HAMMING_ALIGN));
+		
+		try
+		{
+			int size = representativeSeqs.size();
+			for(int i= 0; i < tags.length; i++)
+			{
+				Pyrotag first = (Pyrotag) tags[i];
+				int [] firstHex;
+				
+				if(!hexProfiles.containsKey(first))
+				{
+					char [] collapsed = first.getCollapsedRead();
+					hexProfiles.put(first, getHex(new String(collapsed).substring(0, length + 1), hexToPos, hexPos));	
+				}
+				
+				firstHex = hexProfiles.get(first);				
+				
+				for(int j = i + 1; j < tags.length; j++)
+				{
+					
+					Pyrotag second = (Pyrotag) tags[j];
+					
+					if(OTUS.get(first) != null && OTUS.get(first) == OTUS.get(second))
+					{
+						continue;//save some time.
+					}
+					
+					
+					int [] secondHex;
+					
+					if(!hexProfiles.containsKey(second))
+					{
+						char [] collapsed = second.getCollapsedRead();
+						hexProfiles.put(second, getHex(new String(collapsed).substring(0, length + 1), hexToPos, hexPos));	
+					}
+					
+					secondHex = hexProfiles.get(second);
+					int hexDist = calculateHexDist(firstHex, secondHex);
+					System.out.println("hex distance was " + hexDist);
+
+					if(!(hexDist  < maxHexDist))
+					{
+						System.out.println("Don't need to perform comparison");
+						continue;
+					}
+					
+					
+					// The alphabet of the sequences. For this example DNA is choosen.
+					FiniteAlphabet alphabet = (FiniteAlphabet) AlphabetManager.alphabetForName("DNA");
+					// Read the substitution matrix file. 
+					// For this example the matrix NUC.4.4 is good.
+					
+					URL url = getClass().getResource(SUBSTITUTION_MATRIX);
+					StringBuilder fileContents = new StringBuilder();
+					
+					BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
+					String line = reader.readLine();
+					while(line != null)
+					{
+						fileContents.append(line);
+						
+						line = reader.readLine();
+						
+						if(line != null)
+							fileContents.append(System.getProperty("line.separator"));
+					}
+					
+					//open a temp file, so it can be piped...
+
+					SubstitutionMatrix matrix = new SubstitutionMatrix(alphabet, fileContents.toString(), url.getFile());
+					
+					// Define the default costs for sequence manipulation for the global alignment.
+					SequenceAlignment aligner = new NeedlemanWunsch( 
+							(short) 0, 	// match
+							(short) 3,	// replace
+							(short) 2,  // insert
+							(short) 2,	// delete
+							(short) 1,      // gapExtend
+							matrix 	// SubstitutionMatrix
+					);
+
+					//before bothering to align...
+					
+					
+					Sequence query  = DNATools.createDNASequence(new String(first.getProcessedString()), "query");
+					Sequence target = DNATools.createDNASequence(new String (second.getProcessedString()), "target");
+
+					org.biojava.bio.symbol.Alignment a = aligner.getAlignment(query, target); // second one
+					
+					
+					List <SymbolList> l = a.getLabels();
+
+					int totalMismatch = 0;
+					int totalMatch = 0;
+					
+					
+					int alignLength = a.length();
+					
+					for(int alignPos = 1; alignPos <= alignLength; alignPos++)
+					{
+						Symbol symbolQuery = a.symbolAt("query", alignPos);
+						Symbol symbolTarget = a.symbolAt("target", alignPos);
+						
+						if(symbolQuery == symbolTarget)
+						{
+							totalMatch++;
+						}
+						else
+						{
+							totalMismatch++;
+						}
+						
+					}
+					
+					double identity = (double) totalMatch / (double) (totalMatch + totalMismatch);  
+					
+					
+				//	System.out.println("Identity is " + identity);
+					if(identity > 0.97)
+					{
+					//	System.out.println("Identity was greater than 97% for " + first.getID() + " and " + second.getID());
+						//we have two sequences that would form an OTU, yay!
+						HashSet <Pyrotag> firstSet = OTUS.get(first);
+						HashSet <Pyrotag> secondSet = OTUS.get(second);
+						
+						if(firstSet == null && secondSet != null)
+						{
+							OTUS.get(second).add(first);
+							OTUS.put(first, OTUS.get(second));
+						}
+						else if(secondSet == null && firstSet != null)
+						{
+							OTUS.get(first).add(second);
+							OTUS.put(second, OTUS.get(first));
+						}
+						else if(firstSet == secondSet && firstSet == null)
+						{
+							HashSet <Pyrotag> newSet = new HashSet <Pyrotag>();
+							newSet.add(first);
+							newSet.add(second);
+							OTUS.put(first, newSet);
+							OTUS.put(second, newSet);
+							
+						}
+						else
+						{
+							//they are in different sets..
+							HashSet <Pyrotag> superSet = new HashSet <Pyrotag>();
+							superSet.addAll(firstSet);
+							superSet.addAll(secondSet);
+							
+							for(Pyrotag p: superSet)	
+							{
+								OTUS.put(p, superSet);
+							}
+						}
+					}
+				}
+				
+				if(!OTUS.containsKey(first))
+				{
+			//		System.out.println("Solitary cluster " + first.getID());
+					HashSet <Pyrotag> solitary = new HashSet <Pyrotag>();
+					solitary.add(first);
+					OTUS.put(first,solitary);
+				}
+			}
+			
+			HashMap <HashSet <Pyrotag>, Integer> OTUclusters = new HashMap <HashSet <Pyrotag>, Integer>();
+			
+			int OTUcount = 0;
+			int totalSeqs = 0;
+			
+			StringBuilder otuResult = new StringBuilder();
+			
+			for(Pyrotag p: OTUS.keySet())
+			{
+				//System.out.println(p.getID());
+				int numRepByCluster = 0;
+				if(!OTUclusters.containsKey(OTUS.get(p)))
+				{
+					HashSet <Pyrotag> OTUcluster = OTUS.get(p);
+					for(Pyrotag member: OTUcluster)
+					{
+						numRepByCluster += representativeSeqs.get(member);
+						
+					}
+					
+					totalSeqs += numRepByCluster;
+
+					otuResult.append("Cluster " + OTUcount + " contains " + numRepByCluster + " collapsed reads." + System.getProperty("line.separator"));
+					
+					if(OTUcluster.size() < 10)
+					{
+						otuResult.append("elements: " + System.getProperty("line.separator"));
+						
+						for(Pyrotag member: OTUcluster)
+						{
+							otuResult.append(member.getID() + System.getProperty("line.separator"));
+						}
+					}
+									
+					OTUcount++;
+					OTUclusters.put(OTUS.get(p), numRepByCluster);
+				}
+			}
+			System.out.println(otuResult.toString());
+			
+			rarefactionData(OTUclusters, totalSeqs);
+			
+		}
+		catch (Exception exc) 
+		{
+			exc.printStackTrace();
+		}
+	}
+
+	//really, really slow.
+	public void rarefactionData(HashMap<HashSet<Pyrotag>, Integer> OTUClusters, int totalElements)
+	{	
+		HashMap <Integer, HashSet <Pyrotag>> arrayPosToCluster = new HashMap <Integer, HashSet <Pyrotag>>();
+		
+		StringBuilder output = new StringBuilder();
+		
+		//there are 11 clusters...
+		int [] OTUmembers = new int [OTUClusters.size()];
+		
+		int pos = 0;
+		for(HashSet <Pyrotag> otu: OTUClusters.keySet())
+		{
+			OTUmembers[pos] = OTUClusters.get(otu);
+			System.out.println("OTU " + pos + " has " + OTUmembers[pos] + " elements");
+			arrayPosToCluster.put(pos, otu);
+			pos++;
+		}
+		
+
+		System.out.println("Num elements are " + totalElements);
+		
+		boolean [] seenBefore = new boolean [OTUmembers.length];
+		int numRandomized = 0;
+		
+		int minRandom = 100;
+		int maxRandom = 0;
+		
+		while(numRandomized < totalElements)
+		{
+			int max = totalElements - numRandomized;
+			int selection = (int) (Math.random() * ((double) max));
+			if(minRandom > selection)
+				minRandom = selection;
+			
+			if(maxRandom < selection)
+				maxRandom = selection;
+				
+			numRandomized++;
+			
+			int cumulative = 0;
+			
+			for(int i = 0; i < OTUmembers.length; i++)
+			{
+				if(cumulative + OTUmembers[i] >= selection) //does it need be to greater than or equal to.
+				{
+					//selection is in this thing...					
+					if(!seenBefore[i])
+					{
+						//new obs.
+						output.append(numRandomized +", " + "OTU" + i  + System.getProperty("line.separator"));
+						seenBefore[i] = true;
+					
+					}
+					
+					OTUmembers[i] = OTUmembers[i] - 1; //need to decrease by one element.
+					
+					break;
+				}
+				cumulative += OTUmembers[i];
+			}
+		}
+		System.out.println(output.toString());
+	}
+	
+*/
+
+	private HammingClustering recruitErroneousReads(HashMap<String, LinkedList<Pyrotag>> perfectClusters,
+			HashMap<String, String> settings, AcaciaLogger logger, HashMap<String, BufferedWriter> outputHandles) throws Exception
+	{
+		HashMap <String, int [] > hexReps = new HashMap <String, int [] >();
+		HashMap <String, Integer> hexToPos = new HashMap <String, Integer>();
+		MutableInteger index = new MutableInteger(0); 
+		
+		HashMap <String, String> mergeThisWithThat = new HashMap <String, String>();
+		Integer minimumHamming = Integer.parseInt(settings.get(OPT_MAXIMUM_HAMMING_DIST));
+		
+		int prefixLength = -1;
+		
+		if(perfectClusters.size() == 0)
+		{
+			throw new Exception("Perfect clusters is empty!");
+		}
+		
+		
+		for(String seq: perfectClusters.keySet())
+		{
+			if(prefixLength == -1)
+				prefixLength = seq.length();
+			
+			hexReps.put(seq, getHex(seq, hexToPos, index));
+		}
+	
+		LinkedList <String> freqSortedList = sortedBasedOnFreq(perfectClusters);
+		
+		//all things for tracking whilst using an iterator.
+	
+		String toProcess = null;
+		String nextToProcess = null;
+		
+		boolean done = false;
+		
+		//DONE means I have worked my way up the list based on abundance, and 
+		//identified the best match for each sequence further up in the list
+		
+		while(!done)
+		{
+			Iterator <String> it = freqSortedList.iterator();
+			
+			int ctr = 0;
+			boolean seen = false;
+			
+			int bestMatch = -1;
+			int bestDist = 100000;
+			int currCounter = -1;
+			
+			//it never has next...
+			
+			
+			if(it.hasNext() && toProcess == null)
+			{
+				toProcess = it.next();
+				currCounter = ctr;
+				ctr++;
+				seen = true;
+			}
+			
+			while(it.hasNext())
+			{
+				String curr = it.next();
+				currCounter = ctr;
+				
+			//	System.out.println("Ctr is "  + currCounter);
+				
+				if(nextToProcess == null)
+				{
+					nextToProcess = curr;
+				}
+				
+				if(curr == toProcess)
+				{
+					if(it.hasNext()) //process them!
+					{
+						nextToProcess = it.next();
+						ctr++;
+						seen = true;					
+					}
+					else
+					{
+						done = true;
+					}
+				}
+				else if(seen)
+				{
+					//System.out.println("Was seen, now comparing distances!");
+					//potential for an error here.
+					
+				//	System.out.println("About compare hex profiles");
+					
+					int [] hexToProcess = hexReps.get(toProcess);
+					int [] hexCurr = hexReps.get(curr);
+					
+					int dist = calculateHexDist(hexToProcess, hexCurr);
+					
+					
+					//commenting this out, as it can occur, even if the sequences are different.
+					//I mean, by ALOT!
+					/*if(dist == 0)
+					{
+						System.out.println(toProcess);
+						System.out.println(curr);
+						System.exit(1);
+					}*/
+					
+					
+					if(dist < bestDist)
+					{
+						bestDist = dist;
+						bestMatch = ctr;
+					}
+				}
+				ctr++;
+			}
+			
+			if(bestDist < minimumHamming)
+			{
+				mergeThisWithThat.put(toProcess, freqSortedList.get(bestMatch));
+			}
+			toProcess = nextToProcess;
+		}		
+		
+		//System.out.println("Creating hamming clustering object");
+		HammingClustering hc = new HammingClustering (hexToPos, index,prefixLength);
+		
+		//all pyrotags seems to be fine.
+		
+		return hc;
+	}
+	
+	
+	private void performSuperClustering(AcaciaLogger logger,
+			HashMap<String, LinkedList<Pyrotag>> perfectClusters,
+			HashMap<String, String> mergeThisWithThat,
+			LinkedList<String> freqSortedList) throws Exception
+	{
+		Iterator <String> it = freqSortedList.iterator();
+		
+		int sum = 0;
+		while(it.hasNext())
+		{
+			String repSeq = it.next();
+			int clusterSize = perfectClusters.get(repSeq).size();
+			sum += clusterSize;
+		}
+		
+	//	System.out.println("Across perfect clusters, there are " + sum  + " elements");
+	//	System.out.println("There are " + mergeThisWithThat.size() + " clusters to be destroyed");
+	//	System.out.println("There are " + freqSortedList.size() + " clusters in the freq sorted list");
+		
+		it = freqSortedList.iterator();
+		
+		int merges = 0;
+		
+		while(it.hasNext())
+		{
+			String repSeq = it.next();
+			if(mergeThisWithThat.containsKey(repSeq))
+			{	
+				perfectClusters.get(mergeThisWithThat.get(repSeq)).addAll(perfectClusters.get(repSeq));
+				merges++;
+			}
+		}
+		
+		for(String merged: mergeThisWithThat.keySet()) //should delete all the old clusters.
+		{
+			perfectClusters.remove(merged);
+		}
+		
+		logger.writeLog("#clusters after hexamer recruiting:" + perfectClusters.size() + " clusters", AcaciaLogger.LOG_DEBUG);
+	}
+
+	//this might not be the distance mike was expecting??
+	private int calculateHexDist(int[] hexToProcess, int[] hexCurr) 
+	{
+		int numEdits = 0;
+		
+		for(int i = 0; i < hexToProcess.length; i++)
+		{
+			numEdits += Math.abs(hexToProcess[i] - hexCurr[i]);
+		}
+		return numEdits;
+	}
+
+	//bug in here...
+	private LinkedList <String> sortedBasedOnFreq(HashMap <String, LinkedList <Pyrotag>> perfectClusters)
+	{
+		Set <String> _set = perfectClusters.keySet();
+		
+		LinkedList <String> sortedBasedOnFreq = new LinkedList <String>();
+		
+		for(String s: _set)
+		{
+			int size = perfectClusters.get(s).size();
+			
+			int index = 0;
+			
+			Iterator <String> it = sortedBasedOnFreq.iterator();
+			
+			//insert at index.
+			while(it.hasNext())
+			{
+				String next = it.next();
+				
+				if(perfectClusters.get(next).size() > size)
+				{
+					break;
+				}
+				else
+				{
+					index++;
+				}
+			}
+			
+			sortedBasedOnFreq.add(index, s);
+		}
+		return sortedBasedOnFreq;
+	}
+	
+	private int [] getHex(String sequence, HashMap <String, Integer> hexToPos, MutableInteger index)
+	{
+		double numHex = Math.pow(4,6);
+		int [] hexCounts = new int [(int)numHex];
+		
+		for(int i = 0; i <numHex; i++)
+		{
+			hexCounts[i] = 0;
+		}
+		
+		for(int i = 0; (sequence.length() - i) >= 6 ; i++)
+		{
+			String hexamer = sequence.substring(i, i + 6);
+
+			if(!hexToPos.containsKey(hexamer))
+			{
+				hexToPos.put(hexamer, index.value());
+				index.increment();
+			}
+			
+			hexCounts[hexToPos.get(hexamer)] = hexCounts[hexToPos.get(hexamer)] + 1; 
+		}
+		
+		return hexCounts;
+	}
+
+	//analyse file goes here
+	private RunCharacterisation prepareFileForClustering(AcaciaLogger logger, HashMap <String, String> settings,  LinkedList <MID> validTags) throws Exception
+	{
+		HashMap <MID, LinkedList <Pyrotag>> MIDToSequences = new HashMap <MID, LinkedList <Pyrotag> >();
+		HashMap <MID, Integer> MIDseqLength = new HashMap <MID, Integer>();
+		HashMap <MID, Integer> MIDcollapsedSeqLength = new HashMap <MID, Integer>();
+		HashMap <MID, Double> MIDqualities = new HashMap <MID, Double>();
+		
+		if(validTags.size() == 0)
+			validTags.add(AcaciaUtility.NO_MID_GROUP);
+		
+		int fileIndex = 0;
+		
+		System.out.println("Preparing importer");
+		MMFastaImporter2 importer = this.getTagImporter(settings, logger);
+		
+		//System.out.println("Finished getting le importer");
+		Pyrotag p = importer.getPyrotagAtIndex(fileIndex);
+		
+	//	System.out.println("Got first pyrotag");
+		
+		while (p != null) 
+		{
+			MID matching = p.whichMID(validTags);
+				
+			if(matching == null)
+			{
+				fileIndex++;
+				p = importer.getPyrotagAtIndex(fileIndex);
+				continue;
+			}
+			
+			
+			//this all regards to the MIDS - but it should be thrown away.
+			p.setMultiplexTag(matching); //may already be initialised?			
+			if(! MIDToSequences.containsKey(matching))
+			{
+				MIDToSequences.put(matching, new LinkedList <Pyrotag>());
+			}
+			MIDToSequences.get(matching).add(p);
+			
+			if(! MIDseqLength.containsKey(matching))
+			{
+				MIDseqLength.put(matching, 0);
+			}
+			
+			MIDseqLength.put(matching, MIDseqLength.get(matching) + p.getLength());
+			
+			if(p.getQualities() != null)
+			{
+				if(! MIDqualities.containsKey(matching))
+				{
+					MIDqualities.put(matching, 0.0);
+				}
+				
+				MIDqualities.put(matching, MIDqualities.get(matching) +  p.getUntrimmedAvgQuality());
+			}
+
+			char [] collapsedReadMinusMid = p.getCollapsedRead();
+			if(!MIDcollapsedSeqLength.containsKey(matching))
+			{
+				MIDcollapsedSeqLength.put(matching, 0);
+			}
+			
+			MIDcollapsedSeqLength.put(matching, MIDcollapsedSeqLength.get(matching) +  collapsedReadMinusMid.length);
+			
+			fileIndex++;
+			p = importer.getPyrotagAtIndex(fileIndex);
+		}	
+		
+		RunCharacterisation rc = new RunCharacterisation(MIDToSequences, MIDseqLength, MIDcollapsedSeqLength, MIDqualities);
+		return rc;
+	}
+	
+	
+	private class RunCharacterisation
+	{
+		HashMap <MID, LinkedList <Pyrotag>> MIDToSequences;
+		HashMap <MID, Integer> MIDseqLength;
+		HashMap <MID, Integer> MIDcollapsedSeqLength;
+		HashMap <MID, Double> MIDqualities;
+		
+		public RunCharacterisation(HashMap <MID, LinkedList <Pyrotag>> MIDToSequences, 
+				HashMap <MID, Integer> MIDSeqLength,
+				HashMap <MID, Integer> MIDcollapsedSeqLength, 
+				HashMap <MID, Double> MIDqualities)
+		{
+			this.MIDToSequences = MIDToSequences;
+			this.MIDseqLength = MIDSeqLength;
+			this.MIDcollapsedSeqLength = MIDcollapsedSeqLength;
+			this.MIDqualities = MIDqualities;
+		}
+		
+		public double calculateLengthStandardDevForRead(LinkedList <MID> midsForCalc)
+		{
+			return calculateStandardDeviation(midsForCalc, this.MIDseqLength);
+		}
+		
+		public double calculateCollapsedLengthStandardDevForRead(LinkedList <MID> midsForCalc)
+		{
+			return calculateStandardDeviation(midsForCalc, this.MIDcollapsedSeqLength);
+		}
+		
+		public double getMeanReadLengthForMID(LinkedList <MID> midsForCalc)
+		{
+			return getMeanLengthForMID(midsForCalc, this.MIDseqLength);
+		}
+		
+		public double getMeanCollapsedReadLengthForMID(LinkedList <MID> midsForCalc)
+		{
+			return getMeanLengthForMID(midsForCalc, this.MIDcollapsedSeqLength);
+		}
+		
+		
+		private double getMeanLengthForMID(LinkedList <MID> midsForCalc, HashMap <MID, Integer> sumOfLengths)
+		{
+			int lengthSum = sumLengthsForMIDs(midsForCalc, sumOfLengths);
+			int tagCount = getTagCountForMIDs(midsForCalc);
+			
+			double mean = lengthSum / tagCount;
+			
+			return mean;
+		}
+		
+		public double averageQualityForMIDs(LinkedList <MID> midsForCalc)
+		{
+			double qualitySum = 0;
+			int numTags = 0;
+			
+			if(MIDqualities.size() == 0)
+				return 0;
+			
+			for(MID mid: midsForCalc)
+			{
+				qualitySum += MIDqualities.get(mid);
+				numTags += MIDToSequences.get(mid).size();
+			}
+			
+			return (qualitySum / numTags);
+		}
+		
+		private double calculateStandardDeviation(LinkedList <MID> midsForCalc, HashMap <MID, Integer> sumOfLengths)
+		{
+
+			int tagCount = 0;
+			int lengthSum = 0;
+			double mean = 0;
+			double sumXMinusXBarSqr = 0;
+
+
+			lengthSum = sumLengthsForMIDs(midsForCalc, sumOfLengths);
+			tagCount = getTagCountForMIDs(midsForCalc);
+
+			mean = (lengthSum / tagCount);
+
+			for(MID mid: midsForCalc)
+			{
+				LinkedList <Pyrotag> relevantPyrotags = this.MIDToSequences.get(mid);
+
+				for(Pyrotag p : relevantPyrotags)
+				{
+					double length = p.getLength();
+					double sqrdist = (length - mean) * (length - mean);		
+					sumXMinusXBarSqr += sqrdist;
+				}
+			}
+			double sampleStdDev = Math.sqrt(sumXMinusXBarSqr / tagCount);
+			return sampleStdDev;
+
+		}
+		
+		public int getTagCountForMIDs(LinkedList <MID> midsForCalc)
+		{
+			int tagCount = 0;
+			for(MID mid: midsForCalc)
+			{
+				if(MIDToSequences.containsKey(mid))
+				{
+					tagCount += MIDToSequences.get(mid).size();
+				}
+			}
+			return tagCount;
+		}
+		
+		public int sumCollapsedLengthsForMIDS(LinkedList <MID> midsForCalc)
+		{
+			return sumLengthsForMIDs(midsForCalc, this.MIDcollapsedSeqLength);
+		}
+		
+		public int sumReadLengthsForMIDS(LinkedList <MID> midsForCalc)
+		{
+			return sumLengthsForMIDs(midsForCalc, this.MIDseqLength);
+		}
+		
+		private int sumLengthsForMIDs(LinkedList <MID> midsForCalc, HashMap <MID, Integer> sumOfLengths)
+		{
+			int lengthSum = 0;
+			for(MID mid: midsForCalc)
+			{
+				if(sumOfLengths.containsKey(mid))
+				{
+					lengthSum += sumOfLengths.get(mid);
+				}
+			}
+			return lengthSum;
+		}
+		
+	}	
+
+	private double calculateStdDev(double mean,
+			HashMap<String, String> settings, AcaciaLogger logger) throws Exception 
+			{
+
+		MMFastaImporter2 importer = this.getTagImporter(settings, logger);
+
+	//	logger.writeLog("Trying to load p from file", AcaciaLogger.LOG_PROGRESS);
+
+		int fileIndex = 0;
+		double sumXMinusXBarSqr = 0;
+
+		Pyrotag p = importer.getPyrotagAtIndex(fileIndex);
+
+		while(p != null)
+		{
+			fileIndex++;
+			double length = p.getLength();
+			double sqrdist = (length - mean) * (length - mean);		
+			sumXMinusXBarSqr += sqrdist;
+			p = importer.getPyrotagAtIndex(fileIndex);
+		}
+
+		double sampleStdDev = Math.sqrt(sumXMinusXBarSqr / fileIndex);
+		return sampleStdDev;
+		}
+
+	//get Tag Importer
+	private MMFastaImporter2 getTagImporter(HashMap <String, String> settings, AcaciaLogger logger) 
+	{
+		MMFastaImporter2 importer;
+
+		if (settings.get(AcaciaMain.OPT_FASTA).equals("TRUE")) 
+		{
+			String fastaFile = settings.get(AcaciaUtility.OPT_FASTA_LOC);
+			String qualFile = settings.get(AcaciaUtility.OPT_QUAL_LOC);
+			importer = new MMFastaImporter2(fastaFile, qualFile, logger);
+			return importer;
+		}//TODO no fastq
+		return null;
+	}
+
+	public boolean trimDefined(HashMap <String, String> settings) 
+	{
+		String sTrimLength = settings.get(AcaciaMain.OPT_TRIM_TO_LENGTH);
+		if (sTrimLength != null && !sTrimLength.equals("NONE")) 
+		{
+			return true;
+		}
+		return false;
+	}
+
+	public int getTrim(HashMap <String, String> settings) throws NumberFormatException 
+	{
+		String sTrimLength = settings.get(AcaciaMain.OPT_TRIM_TO_LENGTH);
+		int trimLength = 0;
+		if (sTrimLength != null && !sTrimLength.equals("")) 
+		{
+			trimLength = Integer.parseInt(sTrimLength);
+			return trimLength;
+		}
+		return -1; // fail
+	}
+
+	
+	private HypothesisTest _runTestForSignificance(AcaciaLogger logger, 
+			int modeVal, int obsBelow, int obsAbove, 
+			int obsAt, HashMap <Integer, Integer> flowPosToFreq, OUFrequencyTable table, double thresholdPValue, boolean verbose) throws Exception
+			{
+//				boolean verbose = false;
+				double [] weightedP = new double [3];
+				
+				for(Integer flowPos: flowPosToFreq.keySet())
+				{
+					double freq = flowPosToFreq.get(flowPos);
+					
+					double seqProp =  freq / (double)(obsBelow + obsAt + obsAbove);
+					double [] oldP = table.getProbabilities(modeVal, flowPos);		
+					double [] rearrangedP = new double [] {oldP[OUFrequencyTable.EQUAL_TO], 
+							oldP[OUFrequencyTable.LESS_THAN], oldP[OUFrequencyTable.GREATER_THAN]};		
+					
+					// It is weighted because sequences will be at different
+					// positions in the flow. Therefore... the probabilities from the flow thingy need to be weighted.
+					for(int i= 0; i < weightedP.length; i++)
+					{
+						weightedP[i] += (seqProp * rearrangedP[i]);
+					}
+				}
+				
+				//weighted P is in the orer [EQUAL TO, LESS THAN, GREATER THAN].
+
+				
+				HypothesisTest ht = null;
+				int minSize = 100;
+				
+				for(int i = 0; i < weightedP.length; i++)
+				{
+					int expected = (int) weightedP[i] * (obsAbove + obsBelow + obsAt); //does int round or not...
+					
+					if(expected < minSize)
+					{
+						minSize = expected;
+					}
+				}
+				
+				if(verbose)
+				{
+					logger.writeLog("The min size was " + minSize, AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("Obs above: " + obsAbove, AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("Obs below: " + obsBelow, AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("Obs at: " + obsAt, AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("Mode val: " + modeVal, AcaciaLogger.LOG_DEBUG);
+				}
+				
+				
+				//only way we could be doing 'worse' is if the binomial is less sensitive. 
+				
+				if(minSize < 5) //minimum size in any catergory is less than the golden number
+				{
+					ht = new BinomialTest(obsAbove, obsBelow, obsAt, modeVal, weightedP, thresholdPValue, logger, verbose);
+				}
+				else
+				{
+				//	One-sided multinomial test of significance
+					ht = new MultinomialOneSidedTest(obsAbove, obsBelow, obsAt, modeVal, weightedP, thresholdPValue, logger, verbose);
+				}
+				
+				ht.runTest();
+				
+				return ht;
+			}
+	
+	
+
+	
+	
+	private void outputResults(LinkedList<ThreadedAlignment> consensusAligns,
+			HashMap<String, String> settings, AcaciaLogger logger, HashMap<String, BufferedWriter> outputHandles,
+			HashMap<Pyrotag, Integer> representativeSeqs) throws Exception 
+	{
+		
+		//first, how do I set up seqOut, refOut, mapOut etc.
+		//there is no such thing as already corrected now, can't have a sequence belong to more than one cluster
+		//no reference sequences have been selected 'as yet'
+		//remember to expand hp's.
+		
+		logger.writeLog("About to output results..." ,AcaciaLogger.LOG_DEBUG);
+		
+		
+		//what do I want the output file to be...
+		int numCorrections = 0;
+		int numSeqsCorrected = 0;
+		
+		ArrayList <Integer> correctionCount = new ArrayList <Integer> ();		
+		System.out.println("There are " + consensusAligns.size() + " consensus alignments");
+		
+		int counter = 0;
+		
+		for(ThreadedAlignment ta: consensusAligns)
+		{	
+
+			//System.out.println("Processed sequence " + counter);
+			HashMap <Pyrotag, String> correctedTags = new HashMap<Pyrotag, String>();
+			
+				//what does get longest consensus do again??
+			
+			Pair<String, HashMap<Pyrotag, MutableInteger>> longestConsensus = ta.getLongestConsensus();
+			
+			for(Pyrotag p: longestConsensus.getSecond().keySet())
+			{
+				String substr = longestConsensus.getFirst().substring(0, longestConsensus.getSecond().get(p).value() + 1); //inclusive of last base.
+				
+				if(!substr.equals(new String(p.getProcessedString())))
+				{
+					numSeqsCorrected++;
+					
+					//logger.writeLog(new String(p.getProcessedString()), AcaciaLogger.LOG_DEBUG);
+					//logger.writeLog(substr, AcaciaLogger.LOG_DEBUG);
+				}
+					
+				
+				correctedTags.put(p, substr);
+				outputSequence(outputHandles.get(SEQ_OUT_FILE),substr, p);
+			}
+			
+			Pair <Pyrotag, String> representativeSeq = this.getRepresentativeSeq(correctedTags, settings);
+			representativeSeqs.put(representativeSeq.getFirst(), correctedTags.size());
+			
+			outputSequence(outputHandles.get(REF_OUT_FILE), representativeSeq.getSecond(), representativeSeq.getFirst());
+			
+			for(Pyrotag p: longestConsensus.getSecond().keySet())
+			{
+				outputHandles.get(MAP_OUT_FILE).write(representativeSeq.getFirst().getID() + "\t" + p.getID() + System.getProperty("line.separator")); 
+			}
+			
+			counter++;
+
+		}
+		
+		double mean =  (double) numCorrections/(double) numSeqsCorrected;
+		double sum = 0;
+		
+		for(int i = 0; i < correctionCount.size(); i++)
+		{
+			sum += Math.pow(mean - correctionCount.get(i),2);
+		}
+		
+		double stdDev = Math.sqrt(sum);
+		
+		outputHandles.get(STAT_OUT_FILE).write("# Reference sequences: " + representativeSeqs.size() +System.getProperty("line.separator"));
+		outputHandles.get(STAT_OUT_FILE).write("# Sequences corrected: " + numSeqsCorrected + System.getProperty("line.separator"));
+		
+		this.closeOutputFiles(outputHandles);
+	}
+	
+	private void outputSequence(BufferedWriter out, String corrected, Pyrotag original) throws Exception
+	{
+		//System.out.println("The original ID is " + original.getID());
+		
+		StringBuilder id = new StringBuilder();
+		id.append(">");
+		id.append(original.getID());
+		id.append(" ");
+		id.append(original.getDescription());
+		
+		if(original.getMultiplexTag() != null && original.getMultiplexTag() != AcaciaUtility.NO_MID_GROUP)
+		{
+			id.append(" MID:" + original.getMultiplexTag().getDescriptor());
+		}
+		
+		out.write(id + System.getProperty("line.separator"));
+		out.write(corrected + System.getProperty("line.separator"));
+	}
+	
+	
+	
+
+	// returns the ID of the sequence which should be used as the reference
+	private Pair<Pyrotag, String> getRepresentativeSeq(
+			HashMap<Pyrotag, String> tagsOfInterest, HashMap <String, String> settings) 
+			{
+		String refOption = settings.get(AcaciaMain.OPT_REPRESENTATIVE_SEQ);
+
+		HashMap<Integer, ArrayList<Pyrotag>> lengthToFreq = new HashMap<Integer, ArrayList<Pyrotag>>();
+
+		int max = -1;
+		Pyrotag maxP = null;
+
+		int min = 100;
+		Pyrotag minP = null;
+
+		int modeLength = -1;
+		int modeFreq = -1;
+
+		for (Pyrotag p : tagsOfInterest.keySet()) 
+		{
+			String corrected = tagsOfInterest.get(p);
+			int correctedLength = corrected.length();
+			if (!lengthToFreq.containsKey(correctedLength)) 
+			{
+				lengthToFreq.put(correctedLength, new ArrayList<Pyrotag>());
+			}
+
+			if (correctedLength < min) 
+			{
+				min = correctedLength;
+				minP = p;
+			}
+
+			if (correctedLength > max) 
+			{
+				max = correctedLength;
+				maxP = p;
+			}
+
+			ArrayList<Pyrotag> tags = lengthToFreq.get(correctedLength);
+			tags.add(p);
+
+			if (tags.size() > modeFreq) 
+			{
+				modeFreq = tags.size();
+				modeLength = correctedLength;
+			}
+		}
+
+		if (refOption.equals(AcaciaMain.OPT_MODE_REPRESENTATIVE)) 
+		{
+			try 
+			{
+				Pyrotag first = lengthToFreq.get(modeLength).get(0);
+				return new Pair<Pyrotag, String>(first,
+						tagsOfInterest.get(first));
+			} 
+			catch (Exception e) 
+			{
+				e.printStackTrace();
+			}
+			return null;
+		} 
+		else if (refOption.equals(AcaciaMain.OPT_MAX_REPRESENTATIVE)) 
+		{
+			return new Pair<Pyrotag, String>(maxP, tagsOfInterest.get(maxP));
+		} 
+		else if (refOption.equals(AcaciaMain.OPT_MIN_REPRESENTATIVE)) // assume its refOption MIN
+		{
+			return new Pair<Pyrotag, String>(minP, tagsOfInterest.get(minP));
+		}
+		else //option is median representative
+		{
+			return null;
+		}
+	}
+
+
+	public String [] allPossibleVariants(String midString)
+	{
+		//first check whether there is any non nucleotide.
+
+		StringBuilder [] prefixes = new StringBuilder [] {new StringBuilder()};
+		String ambiguousNucleotide =  "[^ATGC]";
+
+		// Compile and get a reference to a Pattern object.
+		Pattern pattern = Pattern.compile(ambiguousNucleotide);
+
+		// Get a matcher object - we cover this next.
+		Matcher matcher = pattern.matcher(midString);
+
+		int prevMatch = -1;
+
+		while(matcher.find())
+		{
+			int pos = matcher.start();
+			char ambiguous = midString.charAt(pos);
+			String gapSeq = midString.substring(prevMatch + 1, pos);
+			StringBuilder [] newPrefixes = new StringBuilder[prefixes.length * AcaciaUtility.IUPAC_AMBIGUOUS_MAPPINGS.get(ambiguous).length];	
+			int arrayPos = 0;
+
+			for(Character possVal: AcaciaUtility.IUPAC_AMBIGUOUS_MAPPINGS.get(ambiguous))
+			{
+				for(StringBuilder orig: prefixes) 
+				{
+					StringBuilder newBuilder =  new StringBuilder(orig.toString());
+					newBuilder.append(gapSeq);
+					newBuilder.append(possVal);
+					newPrefixes[arrayPos] = newBuilder;
+					arrayPos++;
+				}
+			}
+			prefixes = newPrefixes;
+			prevMatch = pos;
+		}
+
+		String [] result = new String [prefixes.length];
+
+
+		String lastBit = midString.substring(prevMatch + 1, midString.length());
+
+
+		for(int i = 0; i < prefixes.length; i++)
+		{
+			StringBuilder b = prefixes[i];
+			if(prevMatch != midString.length() - 1) 
+			{
+				b.append(lastBit);
+				result[i] = b.toString();
+			}
+			else
+			{
+				result[i] = b.toString(); 
+			}
+		}
+		return result;
+	}
+
+
+
+
+	public static URL getImageUrl(String fileName)
+	{
+		// try to get the URL as a system resource
+		URL url = AcaciaUtilityHolder.getInstance().getClass().getResource(fileName);
+		if (url == null)
+		{
+			// try to get the URL directly from the filename
+			try
+			{
+				url = new URL("file:" + fileName);
+			}
+			catch (Exception e)
+			{
+			}
+		}
+		return url;
+	}
+
+
+	public void initLogFiles(HashMap <String, String> settings, AcaciaLogger logger, boolean runningFromGUI, LinkedList<MID> validMIDS)
+	{
+		String outDir = settings.get(AcaciaMain.OPT_OUTPUT_DIR);
+
+		if(outDir.lastIndexOf(this.getPlatformSpecificPathDivider()) != (outDir.length() - 1))
+		{
+			outDir = outDir + this.getPlatformSpecificPathDivider();
+		}
+
+		String stdOutLoc = outDir + AcaciaMain.STANDARD_OUT_NAME;
+		String stdErrLoc = outDir + AcaciaMain.STANDARD_ERR_NAME;
+		String stdDebugLoc = outDir + AcaciaMain.STANDARD_DEBUG_NAME;
+
+		String runSettingsLoc = outDir + settings.get(OPT_OUTPUT_PREFIX) + ".config";
+		String runSettingsMIDLoc = outDir + settings.get(OPT_OUTPUT_PREFIX) + ".selectedMIDS";
+		
+		BufferedWriter out = null, err = null, debug = null, config = null, midOut = null;
+
+		try
+		{
+			out = new BufferedWriter(new FileWriter(stdOutLoc));
+			err = new BufferedWriter(new FileWriter(stdErrLoc));
+			debug = new BufferedWriter(new FileWriter(stdDebugLoc));
+			
+			if(runningFromGUI)
+			{
+				config = new BufferedWriter(new FileWriter(runSettingsLoc));
+				midOut = new BufferedWriter(new FileWriter(runSettingsMIDLoc));
+				outputSettings(config, midOut, runSettingsMIDLoc, settings, validMIDS);
+			}
+		}
+		catch(IOException ie)
+		{
+			ie.printStackTrace();
+			System.exit(1);
+		}
+
+		try
+		{
+			LogFileHandle stdOut = new LogFileHandle(out);
+			LogFileHandle stdErr = new LogFileHandle(err);
+			LogFileHandle stdDebug = new LogFileHandle(debug);
+			LoggerOutput console = new StandardOutputHandle(); 
+			
+			logger.addOutput(console, AcaciaLogger.LOG_ALL);
+			logger.addOutput(stdOut, AcaciaLogger.LOG_PROGRESS);
+			logger.addOutput(stdErr, AcaciaLogger.LOG_ERROR);
+			logger.addOutput(stdDebug, AcaciaLogger.LOG_DEBUG);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private void outputSettings(BufferedWriter config, BufferedWriter selectedMIDs, String selectedMIDsFileName,
+			HashMap<String, String> settings, LinkedList<MID> validMIDS) throws IOException 
+	{
+		for(String setting: settings.keySet())
+		{
+			if(!(setting.equals(OPT_MID) || settings.get(setting) == null))
+			{
+				config.write(setting + ":" + settings.get(setting) + System.getProperty("line.separator"));
+			}
+		}
+		
+		//validMIds might just be MID all?
+		if(validMIDS.size() == 1 && validMIDS.get(0) == NO_MID_GROUP)
+		{
+			config.write(OPT_MID + ":" + OPT_NO_MID);
+		}
+		else
+		{
+			config.write(OPT_MID + ":" + OPT_LOAD_MIDS);
+			config.write(OPT_MID_FILE + ":" + selectedMIDsFileName);
+		
+			for(MID mid : validMIDS)
+			{
+					selectedMIDs.write(mid.getDescriptor() + "," + mid.getMID() + System.getProperty("line.separator"));
+			}
+		}
+		
+		config.close();
+		selectedMIDs.close();
+	}
+
+	public HashMap <String, String> getDefaultSettings()
+	{
+		HashMap <String, String> settings = new HashMap <String, String>();
+		for (int i = 0; i < settingKeys.length; i++) {
+			System.out.println("Loading " + settingKeys[i] + " to value "
+					+ settingValues[i]);
+			settings.put(settingKeys[i], settingValues[i]);
+		}
+		return settings;
+	}
+
+	public LinkedList <MID> loadMIDS(String filename, AcaciaLogger logger) throws Exception
+	{
+		if(filename == null)
+		{
+			return null;
+		}
+
+		MIDReader mReader = new MIDReader(filename);
+		
+		LinkedList <MID> mids = mReader.loadMIDS();
+		return mids;
+	}
+
+	public static String getPlatformSpecificPathDivider() 
+	{
+		String pathSep = System.getProperty("file.separator");
+		return pathSep;
+	}
+	
+	private abstract class HypothesisTest
+	{
+		protected int observationsAboveMode;
+		protected int observationsBelowMode;
+		protected int observationsAtMode;
+		protected int modeLength;
+		
+		protected int N;
+		protected double [] P;
+		protected double p;
+		
+		protected AcaciaLogger logger;
+		protected double alpha;
+		protected boolean significant;
+		protected boolean verbose;
+		
+		
+		private HypothesisTest(int obsAbove, int obsBelow, int obsMode,int modeLength, double [] P,  double alpha, AcaciaLogger logger, boolean verbose)
+		{
+			this.observationsAboveMode = obsAbove;
+			this.observationsBelowMode = obsBelow;
+			this.observationsAtMode = obsMode;
+			this.modeLength = modeLength;
+			this.P = P;
+			this.p = -1;
+			this.logger = logger;
+			this.alpha = alpha;
+			this.significant = false;
+			this.N = this.observationsAboveMode + this.observationsBelowMode + this.observationsAtMode;	
+			this.verbose = verbose;
+		}
+		
+		public abstract void runTest() throws Exception;
+	}
+	
+	//TODO: there are inconsistencies with which column is being used for error correction.
+	//workout what order P is in. Seems to differ between Binomial Test and Multinomial Test.
+	
+	
+	
+	//weighted P is in the orer [EQUAL TO, LESS THAN, GREATER THAN].
+	
+	private class BinomialTest extends HypothesisTest
+	{
+		public BinomialTest(int obsAbove, int obsBelow, int obsMode,int modeLength, double [] P,  double alpha, AcaciaLogger logger, boolean verbose)
+		{
+			super(obsAbove, obsBelow, obsMode, modeLength, P, alpha, logger, verbose);
+		}
+		
+		public void runTest() throws Exception 
+		{
+			if (observationsBelowMode == 0 && observationsAboveMode == 0) 
+			{
+				this.significant = false;
+				this.p = 1;
+			}//significant if the number of observations above mode is equal to that at the mode. 
+			else if(N <= 5 && observationsAtMode != N)
+			{
+				this.significant = true;
+				this.p = 0;
+			}
+			else if (observationsAboveMode == observationsAtMode
+					|| observationsBelowMode == observationsAtMode) 
+			{
+				this.significant = true;
+				this.p = 0;
+			}
+			else
+			{
+				//way to do this		
+				double obsErrorFreq = (double) observationsAboveMode + (double) observationsBelowMode;
+				
+				int indexBelowMode = 1;
+				int indexAboveMode = 2;
+				
+				double probOfError = P[indexBelowMode] + P[indexAboveMode]; //because I changed the ordering.
+				
+				if(this.verbose)
+				{
+					System.out.println("probability of an error is " + probOfError);
+				}
+				
+				double errorProb = 1 - P[OUFrequencyTable.EQUAL_TO];
+				
+				BinomialDist binomialDist = new BinomialDist(this.N, errorProb);
+				this.p = binomialDist.barF(obsErrorFreq);
+					
+				this.significant = (this.p <= this.alpha);				
+			}
+		}
+	}
+	
+
+	private class MultinomialOneSidedTest extends HypothesisTest
+	{	
+		public MultinomialOneSidedTest(int obsAbove, int obsBelow, int obsMode,int modeLength, double [] P,  double alpha, AcaciaLogger logger, boolean verbose) 
+		{
+			super(obsAbove, obsBelow, obsMode, modeLength, P, alpha, logger, verbose);
+		}
+		
+		public void runTest() throws Exception 
+		{
+			//not significant if no observations below and no observations above
+			if (observationsBelowMode == 0 && observationsAboveMode == 0) 
+			{
+				this.significant = false;
+				this.p = 1;
+			}//significant if the number of observations above mode is equal to that at the mode. 
+			else if(N <= 5 && observationsAtMode != N)
+			{
+				this.significant = true;
+				this.p = 0;
+			}
+			else if (observationsAboveMode == observationsAtMode
+					|| observationsBelowMode == observationsAtMode) 
+			{
+				this.significant = true;
+				this.p = 0;
+			}
+			else
+			{
+	
+				int indexBelowMode = 1;
+				int indexAboveMode = 2;
+				
+				//translate Glenns version of the one sided....
+				double [] X = new double [] {this.observationsAtMode, this.observationsBelowMode, this.observationsAboveMode};
+				double [] xDivN =  new double [] {(double)this.observationsAtMode / (double)this.N, 
+						(double)this.observationsBelowMode / (double)this.N, (double)this.observationsAboveMode / (double)this.N};
+				HashSet <Integer> gamma = new HashSet <Integer> ();
+				
+				for(int i = 1; i < xDivN.length; i++)
+				{
+					if(xDivN[i] >= P[i])
+					{
+						gamma.add(i);
+					}
+				}
+				
+				double sumX  = 0;
+				double sumP = 0;
+				
+				for(int index: gamma)
+				{
+					sumX += X[index];
+					sumP += P[index];
+				}
+
+				while(gamma.size() < 2)
+				{
+					 boolean added = false;
+					
+					 for(int i = 1; i < xDivN.length; i++)
+					 {
+						 double adjP  = X[i] * (1 - sumP) /(this.N - sumX);
+						 
+						 if(adjP > P[i] & ! gamma.contains(i))
+						 {
+							 gamma.add(i);
+							 added = true;
+						 }
+					 }
+					 
+					 if(! added)
+					 {
+						 break;
+					 }
+					sumP = 0;
+					sumX = 0;
+					for(int index: gamma)
+					{
+						sumX += X[index];
+						sumP += P[index];
+					}
+				}
+				NormalDistributionImpl norm = new NormalDistributionImpl();
+				
+				double w2Num  = Math.pow(((N - sumX) - N * (1 - sumP)),2) ; 
+				double w2Denom =(N * (1 - sumP)); 
+				double resSum = 0;
+				for(int index: gamma)
+				{
+					resSum += Math.pow(X[index] - N * P[index], 2) / (N * P[index]);
+				}
+				
+				double w2 =  (w2Num/w2Denom) + resSum;	
+				
+				//System.out.println("W2 is " + w2);
+				
+				double m = Math.sqrt(P[indexBelowMode] * P[indexAboveMode] / (1 - P[indexBelowMode] - P[indexAboveMode]));
+				double calcP = (0.25 + (Math.atan(m) / (2 * Math.PI))) * Math.exp(-w2 / 2) + (1 - norm.cumulativeProbability(Math.sqrt(w2)));
+							
+				this.p = calcP;
+				
+				if(calcP <= this.alpha)
+				{
+					this.significant = true;
+				}
+			}
+		}
+	}
+	
+
+	/**
+	 * SingletonHolder is loaded on the first execution of Singleton.getInstance() 
+	 * or the first access to SingletonHolder.INSTANCE, not before.
+	 */
+	private static class AcaciaUtilityHolder 
+	{ 
+		private static final AcaciaUtility INSTANCE = new AcaciaUtility();
+
+		public static AcaciaUtility getInstance() 
+		{
+			return AcaciaUtilityHolder.INSTANCE;
+		}
+
+	}
+
+	public boolean isIUPAC(char curr) 
+	{
+		String valid = "ATGC";
+		if(valid.indexOf(curr) >= 0 || IUPAC_AMBIGUOUS_MAPPINGS.containsKey(curr))
+		{
+			return true;
+		}
+		return false;
+	}
+
+
+}

@@ -1,0 +1,160 @@
+/*
+ * Acacia - GS-FLX & Titanium read error-correction and de-replication software.
+ * Copyright (C) <2011>  <Lauren Bragg and Glenn Stone - CSIRO CMIS & University of Queensland>
+ * 
+ * 	This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package pyromaniac.GUI;
+
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.LayoutManager;
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+public class ScaleLabel extends JComponent 
+{	
+	private int blockHeight;
+	private Font f;
+	int width;
+	int height;
+	
+	public ScaleLabel(int width, Font f, int blockHeight)
+	{
+		super();
+		this.f = f;
+		this.blockHeight = blockHeight;
+		this.width = width;
+	}
+    
+    public void setPreferredHeight(int ph) 
+    {
+        this.setPreferredSize(new Dimension(width, ph));
+    }
+    
+    public void setPreferredWidth(int pw) 
+    {
+    }
+    
+    public Dimension getMaximumSize()
+    {
+    	return this.getPreferredSize();
+    }
+    
+    /*
+    public Dimension getMaximumSize() 
+    {
+        Dimension size = getPreferredSize();
+        if(size.getWidth() > this.width)
+        {
+        	return new Dimension(this.width, size.height);
+        }
+        else
+        {
+        	return size;
+        }
+    }
+    */
+    
+    public void paintComponent(Graphics g) 
+    {
+	    super.paintComponent(g);
+	    
+	    Rectangle drawHere = g.getClipBounds();
+	    g.setColor(Color.white);
+	    g.fillRect(drawHere.x, drawHere.y, drawHere.width, drawHere.height);
+	    g.setColor(Color.black);
+	    g.drawLine(drawHere.x + drawHere.width - 1, drawHere.y, drawHere.x + drawHere.width -1, drawHere.y + drawHere.height);
+	    int maxX = drawHere.x + drawHere.width;
+	    g.setColor(Color.black);
+	    
+	    Graphics2D g2 = (Graphics2D) g;
+	    FontMetrics fm = g2.getFontMetrics(this.f);
+	    g2.setFont(this.f);
+	    BasicStroke minorTick = new BasicStroke(1);
+	    BasicStroke majorTick = new BasicStroke(3);
+	    
+	    Rectangle2D stringBoundsDD = fm.getStringBounds("00", g2);
+	    Rectangle2D stringBounds1D = fm.getStringBounds("0", g2);
+	    double ascent = fm.getAscent();
+	    double doubleDigitWidth = stringBoundsDD.getWidth();
+	    double singleDigitWidth = stringBounds1D.getWidth();
+	    
+	    for(int i = 40; i >= 0; i--)
+	    {
+			int startBlock = (40 - i) * blockHeight;
+
+			int lineXStart = maxX - 6;
+			int lineXFinish = maxX;
+				
+	    	if(i % 5 == 0)
+	    	{	
+	    		/*
+	    		*	The baseline for all integers will be the bottom of all the characters.		
+	    		*   The point at which the string is drawn is the base of these characters.
+	    		*   The middle of a block is startBlock + (0.5 * block_size)
+	    		*   The middle of the characters is the ascent * 0.5
+	    		*   To draw the characters in the middle of the block need to:
+	    		*   middleBlock + (0.5 * ascent)
+	    		*/
+	    		int fontY = (int) (startBlock + (this.blockHeight / 2) + (0.5 * ascent));
+	    		
+				//int lineY = ((int) (startBlock + (this.blockSize - ((this.blockSize - majorTick.getLineWidth())/2)))); //
+	    		int lineY = (int) (startBlock + (this.blockHeight / 2));
+				
+				int fontX;
+	    		if(i < 10)
+	    		{
+	    			fontX = lineXStart - 3 - (int)singleDigitWidth;
+	    		}
+	    		else
+	    		{
+	    			fontX = lineXStart - 3 - (int)doubleDigitWidth;
+	    		}
+	    		    		
+/*	    		if(i == 40)
+	    		{
+	    			System.out.println("Drawing 40 tick at y: " + lineY);
+	    		}
+	    		
+	    		if(i == 0)
+	    		{
+	    			System.out.println("Drawing 0 tick at y: " + lineY);
+	    		}*/
+	    		
+	    		
+	    		g2.setStroke(majorTick);    		
+	    		g2.drawLine(lineXStart, lineY, lineXFinish, lineY);
+	    		g2.drawString(i + "",fontX,fontY);
+	    	}
+	    	else
+	    	{
+	    		int lineY = (int)(startBlock + (this.blockHeight / 2));
+	    		
+	    		g2.setStroke(minorTick);
+	    		g2.drawLine(lineXStart + 1, lineY, lineXFinish, lineY);
+	    	}
+	   }
+  }
+}

@@ -1,0 +1,553 @@
+/*
+ * Acacia - GS-FLX & Titanium read error-correction and de-replication software.
+ * Copyright (C) <2011>  <Lauren Bragg and Glenn Stone - CSIRO CMIS & University of Queensland>
+ * 
+ * 	This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package pyromaniac;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+
+
+import javax.swing.ImageIcon;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
+
+import pyromaniac.DataStructures.MID;
+import pyromaniac.GUI.CustomDialog;
+import pyromaniac.GUI.GridBagUtility;
+import pyromaniac.GUI.TagInputPanel;
+import pyromaniac.IO.AcaciaLogger;
+
+public class AcaciaMain 
+{
+	private Object settingsFlag;
+	@SuppressWarnings("restriction")
+	AcaciaFrame inputFrame;
+	private String programStatus;
+	
+	public static final String STATUS_USER_INTERACTING = "USER";
+	public static final String STATUS_USER_SUBMITTED = "SUBMITTED";
+	public static final String STATUS_USER_EXITED = "EXITED";
+	
+	public static final Color FRAME_BACKGROUND_COLOUR = Color.decode("#F4E17A");
+	public static final String WATTLE_LOC;
+	public static final String ACACIA_LOGO;
+	public static final String DATE_FORMAT_NOW = "yyyyMMddHHmmss";
+	
+	public static final String OPT_FASTA = "FASTA";
+	public static final String OPT_FASTA_LOC = "FASTA_LOCATION";
+	public static final String OPT_QUAL_LOC = "QUALITY";
+	public static final String OPT_FASTQ = "FASTQ";
+	public static final String OPT_FASTQ_LOC = "FASTQ_LOCATION";
+	public static final String OPT_MID = "MID_OPTION";
+	public static final String OPT_MID_FILE = "MID_FILE";
+	public static final String OPT_CALL_CORR_BASIC = "CALL_CORR_BASIC";
+	public static final String OPT_LOOKAHEAD = "CALL_CORR_1MM";
+	public static final String OPT_TRIM_TO_LENGTH = "TRIM_TO_LENGTH";
+	public static final String OPT_OUTPUT_PREFIX = "OUTPUT_PREFIX";
+	public static final String OPT_OUTPUT_DIR = "OUTPUT_DIR";
+	public static final String OPT_LOAD_MIDS = "LOAD_MIDS";
+	public static final String OPT_ROCHE_5MID = "ROCHE_5MID";
+	public static final String OPT_ROCHE_10MID = "ROCHE_10MID";
+	public static final String OPT_NO_MID = "NO_MID";
+	public static final String OPT_MAX_MODIFICATIONS = "MAX_MODIFICATIONS";
+	public static final String OPT_SIGNIFICANCE_LEVEL = "SIGNIFICANCE_LEVEL";
+	public static final String OPT_REPRESENTATIVE_SEQ = "REPRESENTATIVE_SEQUENCE";
+	public static final String OPT_MIN_AVG_QUALITY = "AVG_QUALITY CUTOFF";
+	public static final String OPT_MODE_REPRESENTATIVE = "Mode";
+	public static final String OPT_MAX_REPRESENTATIVE = "Max";
+	public static final String OPT_MIN_REPRESENTATIVE = "Min";
+	public static final String OPT_MEDIAN_REPRESENTATIVE = "Median"; 
+	
+	
+	public static final String DEFAULT_OPT_FASTA = "TRUE";
+	public static final String DEFAULT_OPT_FASTQ = "FALSE";
+	public static final String DEFAULT_OPT_TRIM_LENGTH = "";
+	public static final String DEFAULT_OPT_MID = OPT_NO_MID;
+	public static final String DEFAULT_ALLOW_LOOKAHEAD = "FALSE";
+	public static final String DEFAULT_OPT_LOOKAHEAD = "TRUE";
+	public static final String DEFAULT_OPT_CALL_CORR = "TRUE";
+	public static final String DEFAULT_OPT_MAX_MODIFICATIONS = "0";
+	public static final String DEFAULT_OPT_SIGNIFICANCE_LEVEL = "0.01";
+	public static final String DEFAULT_OPT_REPRESENTATIVE_SEQ = OPT_MODE_REPRESENTATIVE;
+	public static final String DEFAULT_OPT_MIN_AVG_QUALITY = "20";
+
+	public static final String MENU_STRING_EXIT = "Quit";
+	public static final String MENU_PROGRAM_INFO = "Program Info";
+
+	public static final String ROCHE_10MID_FILE;
+	public static final String ROCHE_5MID_FILE;
+	public static final String DEFAULT_FILE_LOC;
+	public static final String DEFAULT_QUAL_LOC;
+	public static final String DEFAULT_OPT_MID_LOC;
+	public static final String DEFAULT_OPT_OUTPUT_PREFIX;
+	
+
+	// must be initialised statically
+	// output file names, cannot be changed, will be put into output path
+	// DEFAULT_OPT_OUTPUT_PREFIX
+	public static final String BRANCH_OUT = "branches.out";
+	public static final String INDEX_OUT = "index.out";
+	public static final String CORRECTED_SEQS_OUT = "corrected_sequences.out";
+	private static final int FACTOR_OF_MAX_LOADABLE = 5;
+	public static final int MAXIMUM_BIN = 16;
+	static final int PREFIX_FOR_BRANCH_ESTIMATION = 200;
+	
+	//need to be changed to relative to install.
+	static final String PYRONOISE_PROBS_LOCATION;
+	static final String STANDARD_OUT_NAME;
+	static final String STANDARD_ERR_NAME;
+	static final String STANDARD_DEBUG_NAME;
+	public static final String FLOWSIM_PROBS_LOCATION;
+
+	static 
+	{
+		ROCHE_10MID_FILE = null;
+		ROCHE_5MID_FILE = null;
+		DEFAULT_FILE_LOC = "." + AcaciaMain.getPlatformSpecificPathDivider();
+		DEFAULT_QUAL_LOC = "." + AcaciaMain.getPlatformSpecificPathDivider();
+		DEFAULT_OPT_MID_LOC = "." + AcaciaMain.getPlatformSpecificPathDivider();
+		
+		DEFAULT_OPT_OUTPUT_PREFIX = "Acacia_out";
+		
+		WATTLE_LOC = "/images/acacia_small_wattle_icon.png";
+		ACACIA_LOGO = "/images/Acacia_logo2.png";
+		PYRONOISE_PROBS_LOCATION = "/data/QuinceProbs.csv";
+		FLOWSIM_PROBS_LOCATION = "/data/maldeEmpiricalDistributions.csv"; 
+		STANDARD_OUT_NAME = "acacia_standard_output.txt";
+		STANDARD_ERR_NAME = "acacia_standard_error.txt";
+		STANDARD_DEBUG_NAME = "acacia_standard_debug.txt";
+	}
+
+	public static void main(String[] args) 
+	{
+		AcaciaMain am = new AcaciaMain();		
+		Options options = new Options();
+		
+		Option genConfigFile = OptionBuilder.withArgName("file").hasArg().withDescription("Write default config to this file").create("g");
+		Option runFromCMD = OptionBuilder.withArgName("file").hasArg().withDescription("Run Acacia with this config").create("c");
+		Option runGUI = OptionBuilder.withDescription("Run Acacia GUI").create("u");
+		Option help = OptionBuilder.withDescription("Show this help message").create("h");
+		
+		options.addOption(genConfigFile);
+		options.addOption(runFromCMD);
+		options.addOption(runGUI);
+		options.addOption(help);
+
+		try
+		{
+			CommandLineParser parser = new PosixParser(); 
+			CommandLine clObj = parser.parse(options, args);
+			
+			if(clObj.hasOption('g') && clObj.hasOption('c') || clObj.hasOption('g') && clObj.hasOption('u')
+						|| clObj.hasOption('c') && clObj.hasOption('u'))
+			{
+				usage(options);
+			}
+			
+			if(clObj.hasOption('g'))
+			{
+				String config = clObj.getOptionValue('g');
+				am.generateConfig(config);
+				System.exit(1);
+			}
+			else if(clObj.hasOption('c'))
+			{
+				String config = clObj.getOptionValue('c');
+				am.runAcacia(config);
+			}
+			else if(clObj.hasOption('u'))
+			{
+				am.runAcacia(null);				
+			}
+			else
+			{
+				usage(options);
+			}
+		}
+		catch(ParseException pe)
+		{
+			System.out.println(pe.getMessage());
+			pe.printStackTrace();
+			usage(options);
+		}
+		catch(Exception e)
+		{
+			am.cleanExit(null, e);
+		}
+	}
+
+
+	private HashMap <String, String> loadConfigFromFile(String configLocation) throws Exception
+	{
+			HashMap <String, String> settings = AcaciaUtility.getUtility().getDefaultSettings();
+		
+			File f = new File(configLocation);
+
+			if (!f.exists()) 
+			{
+				throw new IOException("Config file does not exist: "
+						+ configLocation);
+			}
+
+			BufferedReader in = new BufferedReader(new FileReader(f));
+
+			String line = in.readLine();
+			while (line != null) 
+			{
+				String[] keyValue = line.split(":");
+				
+				if(settings.containsKey(keyValue[0]))
+				{
+					if(keyValue.length == 2) //user has specified something
+					{
+						System.out.println("Loading from specified config: " + keyValue[0] + ": " + keyValue[1]);
+						settings.put(keyValue[0], keyValue[1]);
+					}
+					else if (keyValue.length > 2)
+					{
+						throw new IOException(
+								"Configuration file is incorrectly formatted: expecting key=value, found "
+										+ line);		
+					}
+					else
+					{
+						//put null for the key.
+						settings.put(keyValue[0], null);
+					}
+				}
+				line = in.readLine();
+			}
+			
+			return settings;
+	}
+
+	private void generateConfig(String string) 
+	{
+		try 
+		{	
+		//	System.getenv(name)
+			File textFile = new File(string);
+			if (!textFile.createNewFile()) 
+			{
+				throw new IOException("File already exists: " + string
+						+ ". Exiting");
+			}
+
+			BufferedWriter out = new BufferedWriter(new FileWriter(textFile));
+
+			HashMap <String, String> defaultSettings = AcaciaUtility.getUtility().getDefaultSettings();
+			
+			for (String setting : defaultSettings.keySet()) {
+				String defaultVal = defaultSettings.get(setting);
+
+				out.write(setting + ":" + defaultVal
+						+ System.getProperty("line.separator"));
+			}
+			out.close();
+			System.out.println("Default config successfully written to "
+					+ string);
+		} 
+		catch (IOException ie) 
+		{
+			System.err.println(ie.getMessage());
+			System.exit(1);
+		}
+	}
+
+	private static void usage(Options options) 
+	{
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp( "Acacia", options);
+		System.exit(1);
+	}
+	
+
+
+	public AcaciaMain() 
+	{
+		this.settingsFlag = new Object();
+		this.programStatus = AcaciaMain.STATUS_USER_INTERACTING;
+	}
+
+
+
+	public class GUIRunnable implements Runnable 
+	{
+		private AcaciaMain am;
+		public GUIRunnable(AcaciaMain am) 
+		{
+			super();
+			this.am = am;
+		}
+
+		public void run() 
+		{
+			new AcaciaFrame().setVisible(true); //starts the GUI thread running
+		}
+	}
+	
+	//after this method, program status has changed from interacting to either submitted or exiting.
+	private void runGUI()
+	{
+		System.out.println("Running from GUI");
+		GUIRunnable mine = this.new GUIRunnable(this);
+		javax.swing.SwingUtilities.invokeLater(mine);	
+	}
+	
+	private void runFromCMD(String configLocation)
+	{
+		System.out.println("Running from CMD line");
+		AcaciaLogger logger = new AcaciaLogger();
+		try
+		{
+			System.out.println("Loading config from file");
+			HashMap <String, String> settings = loadConfigFromFile(configLocation);
+			System.out.println("Config loaded");
+			
+			
+			AcaciaUtility au = AcaciaUtility.getUtility();
+			System.out.println("Initialising the log files");
+			au.initLogFiles(settings, logger, false, null);
+			
+			LinkedList <MID> validTags = null;
+			
+			System.out.println("Settings is <" + settings.get(AcaciaMain.OPT_MID) + ">");
+			
+			if(settings.get(AcaciaMain.OPT_MID).equals(AcaciaMain.OPT_LOAD_MIDS))
+			{
+				System.out.println("Running valid tags");
+				validTags = au.loadMIDS(settings.get(OPT_MID_FILE), logger);
+			}
+			else
+			{
+				validTags = new LinkedList <MID>();
+				validTags.add(AcaciaUtility.NO_MID_GROUP);
+			}
+			
+			System.out.println("Running acacia");
+			
+			ArrayList <String> filesCreated = new ArrayList <String>();	
+			au.runAcacia(settings, validTags, logger,filesCreated, null);
+				
+		}
+		catch(Exception e)
+		{
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+			
+		}
+		finally
+		{
+			try
+			{
+				logger.closeLogger();
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}	
+		}
+		//clean up?
+	}
+	
+	private void runAcacia(String configLocation) throws Exception
+	{	
+		//run GUI
+		if (configLocation == null) 
+		{
+			runGUI();
+		}
+		else
+		{
+			runFromCMD(configLocation);
+		}
+	}
+
+	//TODO: potentially do this to ensure proper program closing.
+	protected void cleanExit(String message, Exception e)
+	{
+		this.inputFrame.setVisible(false);
+		System.exit(1);
+	}
+
+	public static String getPlatformSpecificPathDivider() 
+	{
+		String pathSep = System.getProperty("file.separator");
+		return pathSep;
+	}
+
+	/* Logic for handling 'help' and 'version' info */
+	protected class AcaciaMenuListener implements ActionListener, ItemListener 
+	{
+		AcaciaFrame frame;
+		
+		// TODO: finish the listener.
+
+		public AcaciaMenuListener(AcaciaFrame frame) 
+		{	
+			this.frame = frame;
+		}
+
+		public void actionPerformed(ActionEvent e) 
+		{
+			// ...Get information from the action event...
+			// ...Display it in the text area...
+			System.out.println(e.getActionCommand());
+			
+			if(e.getActionCommand().equals(AcaciaMain.MENU_STRING_EXIT))
+			{
+				this.frame.promptForQuit();
+			}
+			else if(e.getActionCommand().equals(AcaciaMain.MENU_PROGRAM_INFO));
+			{
+				String ABOUT_MESSAGE = "Acacia was written by Lauren Bragg (2010). The Acacia logo is a composition by Lauren Bragg which uses the " +
+						"<a href=http://upload.wikimedia.org/wikipedia/commons/6/68/Acacia_genistifolia.jpg> Acacia_Genistifolia.jpg </a> image from Wikimedia.";
+				JDialog dialog = new CustomDialog(this.frame, false, ABOUT_MESSAGE);
+				dialog.setTitle("About");
+				dialog.setVisible(true);
+				
+			}
+		}
+
+		public void itemStateChanged(ItemEvent e) 
+		{
+			// ...Get information from the item event...
+			// ...Display it in the text area...
+		}
+	}
+	
+	protected class MainFrameListener extends java.awt.event.WindowAdapter
+	{
+		private AcaciaFrame frame;
+		
+		public MainFrameListener( AcaciaFrame frame)
+		{
+			this.frame = frame;
+		}
+		
+		public void windowClosing(WindowEvent e)
+		{
+			this.frame.promptForQuit();
+		}
+	}
+	
+	private class AcaciaFrame extends JFrame
+	{
+		private TagInputPanel tp;
+		
+		public AcaciaFrame ()
+		{
+			super("Acacia - pyrosequencing error-correction and de-replication");
+			init();
+		}
+		
+		public void promptForQuit()
+		{
+			int response = JOptionPane.showConfirmDialog(null, "Are you sure you want to quit?", "Exit Acacia",
+			        JOptionPane.YES_NO_OPTION, 
+			        JOptionPane.QUESTION_MESSAGE);
+			
+			if (response == JOptionPane.NO_OPTION) 
+			{
+				//do nothing;
+			}
+			else
+			{	
+				System.exit(1);
+				//think this needs to be consolidated but no time for it now.
+			}		
+		}
+
+		public void init()
+		{
+			JFrame.setDefaultLookAndFeelDecorated(true);
+			this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			this.setPreferredSize(new Dimension(1064, 800));
+			this.setMinimumSize(new Dimension(1064, 800));
+			
+			URL wattleLoc = getClass().getResource(WATTLE_LOC);
+			
+			if(wattleLoc == null)
+			System.out.println("File could not be found");
+			
+			this.setIconImage(new ImageIcon(wattleLoc).getImage());
+			this.addWindowListener(new MainFrameListener(this));
+					
+			// menu bar for help
+			AcaciaMenuListener listener = new AcaciaMenuListener(this);
+
+			JMenuBar menuBar = new JMenuBar();
+			JMenu menu = new JMenu("Options");
+			menuBar.add(menu);
+
+			JMenuItem quit = new JMenuItem(MENU_STRING_EXIT);
+			JMenuItem info = new JMenuItem(MENU_PROGRAM_INFO);
+			quit.addActionListener(listener);
+			info.addActionListener(listener);
+
+			menu.add(info);
+			menu.add(quit);
+
+			this.setJMenuBar(menuBar);
+
+			GridBagUtility u = new GridBagUtility();
+			// Create and set up the content pane.
+			this.tp = new TagInputPanel(u, this);
+			tp.setOpaque(true);
+
+			this.getContentPane().setLayout(new BorderLayout());
+			this.getContentPane().add(tp, BorderLayout.CENTER);
+		}
+		
+		public void clearFields()
+		{
+			this.tp.clearInterface();
+		}
+	}
+
+}

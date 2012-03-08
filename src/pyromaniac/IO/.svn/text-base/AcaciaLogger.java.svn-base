@@ -1,0 +1,356 @@
+/*
+ * Acacia - GS-FLX & Titanium read error-correction and de-replication software.
+ * Copyright (C) <2011>  <Lauren Bragg and Glenn Stone - CSIRO CMIS & University of Queensland>
+ * 
+ * 	This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package pyromaniac.IO;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Set;
+
+public class AcaciaLogger 
+{
+	private Date [] timeSinceLastOutput;
+	private boolean closed;
+	
+	private HashMap <String, LinkedList <LoggerOutput>> modeToListeners;
+	
+	public static final String LOG_DEBUG = "DEBUG";
+	public static final String LOG_PROGRESS = "PROGRESS";
+	public static final String LOG_ERROR = "ERROR";
+	public static final String LOG_ALL = "ALL";
+	public static final String LOG_NONE = "NONE";
+	
+	public static final int MAX_BUFFER_SIZE = 200;
+	
+	private static HashMap<String, Integer> LOG_TO_INDEX = new HashMap <String, Integer>();
+	private static HashMap <Integer, String> INDEX_TO_LOG = new HashMap <Integer, String>();
+	private static HashMap <String, Integer> LOG_TYPE_TO_STYLE = new HashMap <String, Integer>();
+	
+	
+	static
+	{
+		LOG_TO_INDEX.put(LOG_DEBUG, 0);
+		LOG_TO_INDEX.put(LOG_PROGRESS,1);
+		LOG_TO_INDEX.put(LOG_ERROR,2);
+		
+		INDEX_TO_LOG.put(0, LOG_DEBUG);
+		INDEX_TO_LOG.put(1, LOG_PROGRESS);
+		INDEX_TO_LOG.put(2,LOG_ERROR);
+		
+		LOG_TYPE_TO_STYLE.put(LOG_DEBUG, LoggerOutput.LOG_STYLE_DEBUG);
+		LOG_TYPE_TO_STYLE.put(LOG_PROGRESS, LoggerOutput.LOG_STYLE_PROGRESS );
+		LOG_TYPE_TO_STYLE.put(LOG_ERROR, LoggerOutput.LOG_STYLE_ERROR);
+	}
+	
+	public AcaciaLogger()
+	{
+		this.modeToListeners = new HashMap <String, LinkedList<LoggerOutput>>();
+		//this.buffers = new StringBuilder[LOG_TO_INDEX.size()];
+		this.timeSinceLastOutput = new Date [LOG_TO_INDEX.size()];
+	
+		/*
+		for(int i = 0; i < this.buffers.length; i++)
+		{
+			this.buffers[i] = new StringBuilder();
+		}
+		*/
+		closed = false;
+	}
+	
+	/*
+	public HashMap <String, LinkedList <LoggerOutput>> getOutputs()
+	{
+		return this.modeToListeners;
+	}
+	*/
+	
+	public void addOutput(LoggerOutput newOutput, String mode)
+	{
+		synchronized(this.modeToListeners)
+		{
+			if(mode == LOG_ALL)
+			{
+				for(String logType : AcaciaLogger.LOG_TO_INDEX.keySet())
+				{
+					if(! this.modeToListeners.containsKey(logType))
+					{
+						System.out.println("Adding " + logType + " for " + newOutput);
+						this.modeToListeners.put(logType, new LinkedList <LoggerOutput>());
+					}
+					this.modeToListeners.get(logType).add(newOutput);
+				}
+			}
+			else if (mode != LOG_NONE)
+			{
+				if(! this.modeToListeners.containsKey(mode))
+				{
+					this.modeToListeners.put(mode, new LinkedList <LoggerOutput>());
+				}
+				this.modeToListeners.get(mode).add(newOutput);	
+			}
+		}
+	}
+	
+	public void removeOutput(LoggerOutput removeMe, String mode)
+	{
+		synchronized(this.modeToListeners)
+		{
+			if(this.modeToListeners.containsKey(mode))
+			{
+				this.modeToListeners.get(mode).remove(removeMe);
+			}
+		}
+	}
+	
+	/*
+	public HashSet <LoggerOutput> getListeners()
+	{
+		HashSet <LoggerOutput> outputs = new HashSet <LoggerOutput>();
+		
+		for(String mode: this.modeToListeners.keySet())
+		{
+			for(LoggerOutput lo: this.modeToListeners.get(mode))
+			{
+				outputs.add(lo);
+			}
+		}
+		return outputs;
+	}*/
+	
+	//for now, no thread safety.
+	
+	public String addTimeStamp(String message)
+	{
+		DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss ");
+		Calendar cal = Calendar.getInstance();
+		String modified = (dateFormat.format(cal.getTime()) + message);
+		return modified;
+	}
+	
+	public void appendTimeStamp(StringBuilder message)
+	{
+		DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss ");
+		Calendar cal = Calendar.getInstance();
+		String timeStamp = dateFormat.format(cal.getTime());
+		message.append(timeStamp);
+	}
+	
+	public void writeLog(String message, String logType) throws Exception
+	{
+		synchronized(this.modeToListeners)
+		{
+			if(logType == LOG_ALL)
+			{
+	//			for(int i = 0; i < this.buffers.length; i++)
+		//	{
+					if(this.modeToListeners.containsKey(logType))
+					{
+						_write(message, logType);
+					}
+				//}
+			}
+			else
+			{
+				if(logType == LOG_NONE)
+				{
+					return;
+				}
+	
+				if(logType == LOG_DEBUG)
+				{
+					_write(message, LOG_DEBUG);
+				}
+				else if(logType == LOG_PROGRESS)
+				{
+					_write(message, LOG_PROGRESS);
+				}
+				else if(logType == LOG_ERROR)
+				{
+					_write(message, LOG_ERROR);
+				}
+				else
+				{
+					return; //TODO: an unknown option!
+				}
+			}	
+		}
+	}
+
+	private StringBuilder addMarkup(String toModify, String logType) 
+	{
+		StringBuilder improved = new StringBuilder();
+		this.appendTimeStamp(improved);
+		improved.append(" " + logType);
+		improved.append(": ");
+		improved.append(toModify);
+		improved.append(System.getProperty("line.separator"));
+		return improved;
+	}
+
+	private void _write(String originalMessage, String logType) throws Exception
+	{
+		synchronized(this.modeToListeners)
+		{
+			StringBuilder modified = this.addMarkup(originalMessage, logType);
+
+			if(this.modeToListeners.get(logType) == null)
+				return;
+
+			LinkedList <LoggerOutput> los = this.modeToListeners.get(logType);
+			for(LoggerOutput lo: los)
+			{
+				lo.write(modified, AcaciaLogger.LOG_TYPE_TO_STYLE.get(logType));
+			}
+			this.modeToListeners.notifyAll();
+		}
+		this.timeSinceLastOutput[AcaciaLogger.LOG_TO_INDEX.get(logType)] = Calendar.getInstance().getTime(); 
+	}
+
+	
+	public void removeLogFiles() throws Exception
+	{
+		synchronized (this.modeToListeners)
+		{
+			System.out.println("Removing log files: " + Thread.currentThread().getName());
+			for(String mode: this.modeToListeners.keySet())
+			{
+				LinkedList <LoggerOutput> forMode = this.modeToListeners.get(mode);
+
+				LinkedList <LoggerOutput> toRemove = new LinkedList <LoggerOutput>();
+				for(LoggerOutput lo : forMode)
+				{
+					if(lo instanceof LogFileHandle || lo instanceof StandardOutputHandle)
+					{
+						toRemove.add(lo);
+						
+					}
+					lo.flush();
+				}
+
+				for(LoggerOutput lo: toRemove)
+				{
+					lo.closeHandle();
+					forMode.remove(lo);
+				}
+			}
+			System.out.println("Finished removing log files: " + Thread.currentThread().getName());
+			this.modeToListeners.notifyAll();
+		}
+	}
+	
+	/*
+	private void writeOrBuffer(String originalMessage, int bufferIndex)
+	{
+		if(originalMessage.length() == 0)
+		{
+			return;
+		}
+
+		String logType = AcaciaLogger.INDEX_TO_LOG.get(bufferIndex);
+		StringBuilder buffer = this.buffers[bufferIndex];	
+		
+		if(buffer.length() < MAX_BUFFER_SIZE)
+		{
+			buffer.append(this.addMarkup(originalMessage,logType) + System.getProperty("line.separator"));
+		}
+		else
+		{
+			Date timeNow = Calendar.getInstance().getTime();
+			
+			//write what is in the buffer
+			if(buffer.length() > 0 || timeNow.)
+			{
+				for(LoggerOutput lo: this.modeToListeners.get(logType))
+				{
+					lo.write(buffer, AcaciaLogger.LOG_TYPE_TO_STYLE.get(logType));
+				}
+				this.timeSinceLastOutput[AcaciaLogger.LOG_TO_INDEX.get(logType)] = Calendar.getInstance().getTime(); 
+			}
+			
+			//fill the buffer with the new message
+			this.buffers[bufferIndex] = new StringBuilder();
+			this.buffers[bufferIndex].append(this.addMarkup(originalMessage, logType));
+		}
+	}
+	*/
+		
+	/*
+	public void flushBuffers()
+	{
+		for(String logType: this.modeToListeners.keySet())
+		{
+			if(this.buffers[AcaciaLogger.LOG_TO_INDEX.get(logType)].length() == 0)
+			{
+				return;
+			}
+
+			for(LoggerOutput lo: this.modeToListeners.get(logType))
+			{
+				lo.write(this.buffers[AcaciaLogger.LOG_TO_INDEX.get(logType)], AcaciaLogger.LOG_TYPE_TO_STYLE.get(logType));
+			}
+			this.buffers[AcaciaLogger.LOG_TO_INDEX.get(logType)] = new StringBuilder(); 
+		}
+	}
+	*/
+
+	public void closeLogger() throws Exception
+	{
+		synchronized(this.modeToListeners)
+		{
+			System.out.println("Closing logger: " + Thread.currentThread().getName());
+			//this.flushBuffers();
+			for(String mode: this.modeToListeners.keySet())
+			{
+				LinkedList <LoggerOutput> los = this.modeToListeners.get(mode);
+				for(LoggerOutput lo: los)
+				{
+					if(!lo.isClosed())
+						lo.closeHandle();
+				}
+			}
+			System.out.println("Finished closing logger: " + Thread.currentThread().getName());
+		}
+		this.closed = true;
+	}
+
+	public void flushLogs() throws Exception
+	{
+
+		synchronized(this.modeToListeners)
+		{
+			System.out.println("Closing logger: " + Thread.currentThread().getName());
+			//this.flushBuffers();
+			for(String mode: this.modeToListeners.keySet())
+			{
+				LinkedList <LoggerOutput> los = this.modeToListeners.get(mode);
+				for(LoggerOutput lo: los)
+				{
+					if(!lo.isClosed())
+					{
+						lo.flush();
+					}
+				}
+			}
+		}
+	}
+}

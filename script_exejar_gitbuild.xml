@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project AcaciaGitProject with Jar-in-Jar Loader">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <target name="create_run_jar">
+        <property file="src/data/build_info.properties"/>
+           <echo message="${build.number}"/>
+   		<property name="version.number" value="${build.major.number}.${build.minor.number}.b${build.number}"/>
+    	<jar destfile="E:\Coding_and_Data\Projects\AcaciaExcutablesGit\acacia-${version.number}.jar">
+            <manifest>
+                <attribute name="Built-By" value="Lauren Bragg"/>
+                   <attribute name="Implementation-Version" 
+                           value="${version.num}-b${build.number}"/>   
+                    <attribute name="Built-Date" value="${TODAY}"/> 
+                   <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
+                   <attribute name="Rsrc-Main-Class" value="pyromaniac.AcaciaMain"/>
+                   <attribute name="Class-Path" value="."/>
+                <attribute name="Rsrc-Class-Path" value="./ biojava.jar biojava-1.7.1-all.jar classmexer-0_03.zip colt.jar optimization.jar Blas.jar tcode.jar jfreechart-1.0.10.jar jcommon-1.0.13.jar language-1.6.7.jar event-1.6.5.jar logger-1.6.4.jar interpreter-1.6.8.jar ssj.jar commons-cli-1.2.jar commons-math-2.1.jar"/>
+            </manifest>
+            <zipfileset src="jar-in-jar-loader.zip"/>
+            <fileset dir="E:/GitRepo/AcaciaEclipse/Acacia/bin"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party" includes="biojava.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party" includes="biojava-1.7.1-all.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party" includes="classmexer-0_03.zip"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="colt.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="optimization.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="Blas.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="tcode.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="jfreechart-1.0.10.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="jcommon-1.0.13.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="language-1.6.7.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="event-1.6.5.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="logger-1.6.4.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="interpreter-1.6.8.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="ssj.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\commons-cli-1.2" includes="commons-cli-1.2.jar"/>
+            <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\commons-math-2.1\commons-math-2.1" includes="commons-math-2.1.jar"/>
+        </jar>
+        <propertyfile file="src/data/build_info.properties">
+        <entry key="build.number" type="int" operation="+" value="1" pattern="00"/>
+        </propertyfile>
+    </target>
+</project>

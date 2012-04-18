@@ -182,7 +182,7 @@ public class AcaciaMain
 			{
 				String config = clObj.getOptionValue('g');
 				am.generateConfig(config);
-				System.exit(1);
+				System.exit(0);
 			}
 			else if(clObj.hasOption('c'))
 			{
@@ -390,7 +390,7 @@ public class AcaciaMain
 	{
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp( "Acacia", options);
-		System.exit(1);
+		System.exit(0);
 	}
 	
 
@@ -454,6 +454,8 @@ public class AcaciaMain
 	{
 		this.checkSettings(settings);
 		
+		boolean errorOccurred = false;
+		
 		AcaciaLogger logger = new AcaciaLogger();
 		try
 		{	
@@ -483,6 +485,7 @@ public class AcaciaMain
 		}
 		catch(OutOfMemoryError error)
 		{
+			errorOccurred = true;
 			logger.writeLog(error.getMessage(), AcaciaLogger.LOG_ERROR);
 			
 			StackTraceElement [] trace = error.getStackTrace();
@@ -494,6 +497,7 @@ public class AcaciaMain
 		}
 		catch(Exception e)
 		{
+			errorOccurred = true;
 			System.out.println(e.getMessage());
 			logger.writeLog(e.getMessage(), AcaciaLogger.LOG_ERROR);
 			
@@ -514,7 +518,15 @@ public class AcaciaMain
 			{
 				e.printStackTrace();
 			}	
-			System.exit(1);
+			
+			if(errorOccurred)
+			{
+				System.exit(1);
+			}
+			else
+			{
+				System.exit(0);
+			}
 		}
 	}
 	
@@ -824,7 +836,7 @@ public class AcaciaMain
 	protected void cleanExit(String message, Exception e)
 	{
 		this.inputFrame.setVisible(false);
-		System.exit(1);
+		System.exit(0);
 	}
 
 	/**
@@ -971,7 +983,7 @@ public class AcaciaMain
 			}
 			else
 			{	
-				System.exit(1);
+				System.exit(0);
 				//think this needs to be consolidated but no time for it now.
 			}		
 		}

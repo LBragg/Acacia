@@ -102,7 +102,13 @@ public class SimpleClusterAligner implements ClusterAligner
 
 		String currConsensus = consensus;
 		LinkedList <Pyrotag> currCluster = cluster;
-
+		
+		//initially, currCluster is not sorted by common sequence to less common. Possible that seeding aligmment sucks
+		
+		//LinkedList <Pyrotag> sorted = sortClusterByLongerPrefix(currCluster); //TODO: test!
+		
+		//currCluster = sorted;
+		
 		/* keep trying to align the cluster
 		 * remove sequences that did align
 		 * try aligning the remaining sequences, too few form a consensus
@@ -126,7 +132,6 @@ public class SimpleClusterAligner implements ClusterAligner
 			//only one sequence did not fit the alignment, mark it as a signleton
 			if(result.third.size() == 1)
 			{
-				
 				singletons.add(result.third.getFirst());
 				break;
 			}
@@ -139,8 +144,6 @@ public class SimpleClusterAligner implements ClusterAligner
 			//make every sequence a singleton (ie. if there is only 1 sequence as a consensus...)
 			if(consensusRes.getSecond() == 1 && result.third.size() < 5)
 			{
-
-				
 				for(Pyrotag p: result.third)
 				{
 					singletons.add(p);
@@ -156,9 +159,7 @@ public class SimpleClusterAligner implements ClusterAligner
 			//may or may not make a difference....
 			if(ctr > 1 && currCluster.size() - result.third.size() <= 2 && currCluster.size() < 10)
 			{
-
 				PatriciaTrie trie = new PatriciaTrie();
-
 				for(Pyrotag p: result.third)
 				{	
 					//insert all the non-conforming sequences intro the trie.
@@ -190,11 +191,11 @@ public class SimpleClusterAligner implements ClusterAligner
 							processed.add(p);
 						}
 					}
+				
 					result = _alignSequences(logger, settings, prefixes, pSet.getSecond(), verbose);
 					//result contains the tags to their initial flow positions, straight after the MID.
 
 					allResults.add(new Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>>(result.first, result.second));
-
 					if(result.third.size() > 0)
 					{
 						
@@ -214,8 +215,84 @@ public class SimpleClusterAligner implements ClusterAligner
 
 		}while(result.third.size() > 0);
 	}
-	
 
+	private LinkedList<Pyrotag> sortClusterByLongerPrefix (LinkedList<Pyrotag> currCluster) 
+	{
+		//problem is for perfect clusters, did we used a prefix. We now should consider the smallest sequence?
+		//we are interested in a length where 75% of the reads are this long....
+		if(currCluster.size() == 1)
+		{
+			return currCluster;
+		}
+		
+		HashMap <Integer, LinkedList <Pyrotag>> sizeToTags = new HashMap <Integer, LinkedList <Pyrotag>>();
+		
+		//non unique elements. Boo!
+		for(Pyrotag p: currCluster)
+		{
+			int length = p.getCollapsedRead().length;
+			
+			if(! sizeToTags.containsKey(length))
+			{
+				sizeToTags.put(length, new LinkedList <Pyrotag>());
+			}
+			sizeToTags.get(length).add(p);
+		}
+		
+		LinkedList <Integer> lengths = new LinkedList<Integer>(sizeToTags.keySet());
+		Collections.sort(lengths);
+	
+		int elements = currCluster.size();
+		int twentyFifthPercentile = (int) (elements / 4);		
+		int cumulativeTotal = 0;
+		int minLength = 0;
+			
+		for(int length: lengths)
+		{
+			cumulativeTotal += sizeToTags.get(length).size();
+			
+			if(cumulativeTotal >= twentyFifthPercentile)
+			{
+				minLength = length;
+				break;
+			}
+		}
+		
+		HashMap <String, HashSet<Pyrotag>> prefixOcc = new HashMap<String, HashSet <Pyrotag>>();
+		
+		for(Pyrotag p: currCluster)
+		{
+			String prefix = (p.getCollapsedRead().length > minLength)? new String(Arrays.copyOf(p.getCollapsedRead(), minLength)) : new String(p.getCollapsedRead());			
+			if(!prefixOcc.containsKey(prefix))
+			{
+				prefixOcc.put(prefix, new HashSet <Pyrotag>());				
+			}
+			prefixOcc.get(prefix).add(p);
+		}
+	
+		LinkedList <HashSet <Pyrotag>> groupedByCommonPrefix = new LinkedList <HashSet <Pyrotag>>(prefixOcc.values());
+	    Collections.sort(groupedByCommonPrefix, new ComparatorHashSetPyrotag());
+	    //sorted
+	    
+	    LinkedList <Pyrotag> sortedTags = new LinkedList <Pyrotag>();
+	    //they are added in the wrong direction.
+	    
+	    for(HashSet <Pyrotag> hs: groupedByCommonPrefix)
+	    {
+	    	sortedTags.addAll(hs);	
+	    }
+	    
+		return sortedTags;
+	}
+
+	public class ComparatorHashSetPyrotag implements Comparator<HashSet<Pyrotag>>
+	{
+	    public int compare(HashSet<Pyrotag> o1, HashSet<Pyrotag> o2) 
+	    {
+	        return (o1.size() > o2.size() ? -1 : (o1.size() == o2.size() ? 0 : 1));
+	    }
+	}
+	
 	/**
 	 * _align sequences.
 	 *

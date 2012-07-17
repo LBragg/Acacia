@@ -1620,11 +1620,18 @@ public class AcaciaEngine
 			outDir = outDir + AcaciaEngine.getPlatformSpecificPathDivider();
 		}
 
-		String stdOutLoc = outDir + AcaciaMain.STANDARD_OUT_NAME;
-		String stdErrLoc = outDir + AcaciaMain.STANDARD_ERR_NAME;
-		String stdDebugLoc = outDir + AcaciaMain.STANDARD_DEBUG_NAME;
-		String runSettingsLoc = outDir + settings.get(AcaciaConstants.OPT_OUTPUT_PREFIX) + ".config";
-		String runSettingsMIDLoc = outDir + settings.get(AcaciaConstants.OPT_OUTPUT_PREFIX) + ".selectedMIDS";
+		String runPrefix = settings.get(AcaciaConstants.OPT_OUTPUT_PREFIX);
+		
+		//String stdOutLoc = outDir + AcaciaMain.STANDARD_OUT_NAME;
+		//String stdErrLoc = outDir + AcaciaMain.STANDARD_ERR_NAME;
+		//String stdDebugLoc = outDir + AcaciaMain.STANDARD_DEBUG_NAME;
+		
+		String stdOutLoc = outDir + runPrefix + "_" + AcaciaMain.STANDARD_OUT_SUFFIX;
+		String stdErrLoc = outDir + runPrefix + "_" + AcaciaMain.STANDARD_ERR_SUFFIX;
+		String stdDebugLoc = outDir + runPrefix + "_" + AcaciaMain.STANDARD_DEBUG_SUFFIX;
+		
+		String runSettingsLoc = outDir + runPrefix + ".config";
+		String runSettingsMIDLoc = outDir + runPrefix + ".selectedMIDS";
 		
 		BufferedWriter out = null, err = null, debug = null, config = null, midOut = null;
 
@@ -1633,6 +1640,7 @@ public class AcaciaEngine
 		err = new BufferedWriter(new FileWriter(stdErrLoc));
 		debug = new BufferedWriter(new FileWriter(stdDebugLoc));
 
+		//output the run settings as a record.
 		if(runningFromGUI)
 		{
 			config = new BufferedWriter(new FileWriter(runSettingsLoc));

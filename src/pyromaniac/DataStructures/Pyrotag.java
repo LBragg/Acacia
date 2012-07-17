@@ -24,6 +24,8 @@ import java.util.LinkedList;
 
 import pyromaniac.AcaciaConstants;
 import pyromaniac.AcaciaEngine;
+import pyromaniac.DataStructures.FlowCycler.CycleIterator;
+import pyromaniac.IO.AcaciaLogger;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -43,7 +45,7 @@ public class Pyrotag
 	/** The nucleotides. */
 	private char [] nucleotides;
 	
-	/** The desc. */
+	/** The description */
 	private String desc;
 	
 	/** The mid. */
@@ -64,21 +66,12 @@ public class Pyrotag
 	/** The Constant VALID_BASES_IN_SEQUENCE. */
 	public static final String VALID_BASES_IN_SEQUENCE = "ATGCN";
 	
-	/** The Constant flowCycle. */
-	public static final HashMap <Character, Character> flowCycle = new HashMap <Character, Character> ();
+	/** The constant FlowCycler*/
+	private FlowCycler cycler;
 	
 	/** The Constant CYCLE_START. */
 	public static final Character CYCLE_START = 'T';
-	
-	
-	static
-	{
-		flowCycle.put('T', 'A');
-		flowCycle.put('A', 'C');
-		flowCycle.put('C', 'G');
-		flowCycle.put('G', 'T');
-	}
-	
+
 	/** The Constant NO_TRIM. */
 	public static final int NO_TRIM = -1;
 	
@@ -104,7 +97,7 @@ public class Pyrotag
 	 * @param nucleotideSeq the nucleotide seq
 	 * @param qualitySeq the quality seq
 	 */
-	public Pyrotag(String id, String desc, Sequence <Character> nucleotideSeq, Sequence <Integer> qualitySeq)
+	public Pyrotag(String id, String desc, Sequence <Character> nucleotideSeq, Sequence <Integer> qualitySeq, FlowCycler cycler)
 	{
 		this.id = id;
 		this.desc = desc;
@@ -143,7 +136,14 @@ public class Pyrotag
 		this.mid = null;
 		this.trimToLength = NO_TRIM;
 		this.multiplexTagLength = NO_TAG;
+		this.cycler = cycler;
 	}
+	
+	public final FlowCycler getFlowCycler()
+	{
+		return this.cycler;
+	}
+	
 	
 	/**
 	 * Gets the untrimmed avg quality.
@@ -203,6 +203,7 @@ public class Pyrotag
 	public void setMIDPrimerCombo(MIDPrimerCombo midPrimer)
 	{
 		this.mid = midPrimer;
+		
 		this.setMultiplexTagLength(midPrimer.getMIDPrimerSequence().length()); //mid and primer sequence.		
 	}
 	
@@ -235,99 +236,191 @@ public class Pyrotag
 	 * @param key the key
 	 * @param nucPos the nuc pos
 	 * @return the flow for collapsed read pos
+	 * @throws NFoundAtReadStartException 
 	 */
-	public int getFlowForCollapsedReadPos(String key, int nucPos)
+	
+	//there has got to be a cleaner way??
+	
+	public int [] getFlowPositionForCallPriorToCollapsedReadStart(String key)
 	{
-		int pos = flowsBetweenLastFlowAndSeqStart(Pyrotag.CYCLE_START, key);
-		char prev = key.charAt(0);
+		CycleIterator it = this.cycler.iterator();
+		return _getFlowPositionForCallPriorToCollapsedReadStart(key, it);
+	}
+	
+	public int [] getFlowPositionForCollapsedReadPosition(String key, int nucPos)throws ReadWithZeroLengthException
+	{
+		CycleIterator it = this.cycler.iterator();
 		
-		//get to beginning of key (based on flow cycle)
-		for(int i = 1; i < key.length(); i++)
+		int [] lastFlow =  _getFlowPositionForCallPriorToCollapsedReadStart(key, it);
+		char [] collapsed = this.getCollapsedRead(); //doesn't have the MID or primer in it. 
+	
+		if(collapsed.length == 0)
 		{
-			char curr = key.charAt(i); 
-			
-			while(flowCycle.get(prev) != curr)
-			{
-				pos++;
-				prev = flowCycle.get(prev);
-			}
-			pos++; //think this needs to be done anyhow?
+			throw new ReadWithZeroLengthException(this);
 		}
-
-		char curr;
 		
-		
-		char [] collapsed = this.getCollapsedRead(); //doesn't have the MID in it.
-		
-		//MID
-		if(this.mid != null && this.mid.MID.length() > 0)
+		int [] lastCalledFlow = lastFlow; //last called flow from MID or the key.		
+		for(int i = 0; i <= nucPos && i < collapsed.length; i++)
 		{
-			pos += flowsBetweenLastFlowAndSeqStart(key.charAt(key.length() - 1), mid.MID);
-			curr = this.mid.getMID().charAt(this.mid.getMID().length() - 1); //last character
-		}
-		else
-		{
-			curr = key.charAt(key.length() - 1);
-		}		
-		
-		//gap between key/MID and read start
-		char lastGoodBase = curr;		
-		if(collapsed[0] != 'N')
-		{
-			do
-			{
-				if(curr == 'N') //should never occur
-				{
-					curr = lastGoodBase;
-					break;
-				}
-				else
-				{
-					lastGoodBase = curr;
-				}
-			
-				curr = flowCycle.get(curr);
-				pos++;
-			}
-			while(curr != collapsed[0]);
-		}
-				
-		for(int i= 0; i <= nucPos && i < collapsed.length; i++)
-		{
-			while(curr != collapsed[i]) //illegal access here?
-			{
+			//the first base in collapsed, 
+			while(collapsed[i] != lastFlow[FlowCycler.FLOWED_BASE])
+			{					
 				if(collapsed[i] == 'N')
 				{
-					curr = lastGoodBase;
-					pos+= 3;
+					do
+					{
+						lastFlow = it.next();
+					}
+					while(lastFlow[FlowCycler.FLOWED_BASE] != lastCalledFlow[FlowCycler.FLOWED_BASE]); //for 454.
 					break;
 				}
 				else
 				{
-					pos++;
-					lastGoodBase = curr;
-					curr = flowCycle.get(curr);
+					lastFlow = it.next();
+				}
+			}
+	
+			lastCalledFlow = lastFlow;
+		}
+		
+		return lastFlow;
+	}
+	
+	private int [] _getFlowPositionForCallPriorToCollapsedReadStart(String key, CycleIterator it)
+	{
+		int [] lastFlow = it.next(); //starts it off.
+		
+		//previous is at the beginning of the key, move through the key now.
+		for(int i = 0; i < key.length(); i++)
+		{
+			char curr = key.charAt(i); 
+			while(lastFlow[FlowCycler.FLOWED_BASE] != curr) 
+			{
+				lastFlow = it.next();
+			}
+		}
+				
+		//account for the MID we clipped off, but are we clipping off MID only or MID AND PRIMER
+		if(this.mid != null && this.mid.getMIDPrimerSequence().length() > 0)
+		{
+			//lastFlow = flowsBetweenLastFlowAndSeqStart(it, mid.MID);	
+			//process the mid
+			String midPrimer = mid.getMIDPrimerSequence(); //we require a perfect match in the MID and primer.
+			for(int i = 0; i < midPrimer.length(); i++)
+			{
+				char curr = this.nucleotides[i];
+				
+				while(lastFlow[FlowCycler.FLOWED_BASE] != curr)
+				{
+					lastFlow = it.next();
 				}
 			}
 		}
-
-		return pos;
+		return lastFlow;
 	}
 	
 	
+	//old
+	/*
+	public int [] getFlowForCollapsedReadPos(String key, int nucPos) throws NFoundAtReadStartException, Exception
+	{
+		CycleIterator it = this.cycler.iterator();
+
+		int [] lastFlow = it.next(); //starts it off.
+		
+		//previous is at the beginning of the key, move through the key now.
+		for(int i = 0; i < key.length(); i++)
+		{
+			char curr = key.charAt(i); 
+			while(lastFlow[FlowCycler.FLOWED_BASE] != curr) 
+			{
+				lastFlow = it.next();
+			}
+		}
+				
+		//account for the MID we clipped off, but are we clipping off MID only or MID AND PRIMER
+		if(this.mid != null && this.mid.getMIDPrimerSequence().length() > 0)
+		{
+			//lastFlow = flowsBetweenLastFlowAndSeqStart(it, mid.MID);	
+			//process the mid
+			String midPrimer = mid.getMIDPrimerSequence(); //we require a perfect match in the MID and primer.
+			for(int i = 0; i < midPrimer.length(); i++)
+			{
+				char curr = this.nucleotides[i];
+				
+				while(lastFlow[FlowCycler.FLOWED_BASE] != curr)
+				{
+					lastFlow = it.next();
+				}
+			}
+		}
+
+		char [] collapsed = this.getCollapsedRead(); //doesn't have the MID or primer in it. 
+		
+		if(collapsed.length == 0)
+		{
+			//TODO: check outside this function that it is empty? Or throw empty string exception?	
+			System.out.println(this.id);
+			System.out.println("trim to Length" + this.trimToLength);
+			System.out.println("multiplex tag length "+ this.multiplexTagLength);
+		}
+		
+		int currentPosition = 0; //currentPosition in collapsed
+		
+		//1. how do we want to handle initial N's.
+		if(collapsed[currentPosition] == 'N')
+		{
+			throw new NFoundAtReadStartException(this);
+		}
+
+		
+		int [] lastCalledFlow = lastFlow; //last called flow from MID or the key.
+		
+		for(int i = 0; i <= nucPos && i < collapsed.length; i++)
+		{
+			//the first base in collapsed, 
+			while(collapsed[i] != lastFlow[FlowCycler.FLOWED_BASE])
+			{					
+				if(collapsed[i] == 'N')
+				{
+					do
+					{
+						lastFlow = it.next();
+					}
+					while(lastFlow[FlowCycler.FLOWED_BASE] != lastCalledFlow[FlowCycler.FLOWED_BASE]); //for 454.
+				}
+				else
+				{
+					lastFlow = it.next();
+				}
+			}
+	
+			lastCalledFlow = lastFlow;
+		}
+		
+		return lastFlow;
+	}
+	
+	*/
 	
 	
 	/**
-	 * Flows between last flow and seq start.
+	 * Flows between last flow and seq start. Inclusive of seq start flow
 	 *
 	 * @param lastFlow the last flow
 	 * @param seq the seq
 	 * @return the int
 	 */
-	public int flowsBetweenLastFlowAndSeqStart(Character lastFlow, String seq)
+	
+	/*
+	public int flowsBetweenLastFlowAndSeqStart(FlowCycler.CycleIterator it, String seq)
 	{
+		
+		
+		
 		return flowsBetweenLastFlowAndChar(lastFlow, seq.charAt(0));
 	}
+	*/
 	
 	
 	/**
@@ -337,7 +430,7 @@ public class Pyrotag
 	 * @param start the start
 	 * @return the int
 	 */
-	public int flowsBetweenLastFlowAndChar(Character lastFlow, Character start)
+/*	public int flowsBetweenLastFlowAndChar(Character lastFlow, Character start)
 	{
 		Character curr = lastFlow;
 		Character seqFirst = start;
@@ -372,13 +465,16 @@ public class Pyrotag
 		return offset;
 	}
 	
+	*/
+	
 	/**
 	 * Flows between seq start and seq end.
 	 *
 	 * @param seq the seq
 	 * @return the int
+	 * @throws NFoundAtReadStartException 
 	 */
-	private int flowsBetweenSeqStartAndSeqEnd(String seq)
+/*	private int flowsBetweenSeqStartAndSeqEnd(String seq)
 	{
 		int flowOffset = 0;
 		int seqIndex = 0;
@@ -398,6 +494,87 @@ public class Pyrotag
 		}
 		return flowOffset;
 	}
+	*/
+	
+	public int flowPosToBasePos (int flowPos, String key) throws NFoundAtReadStartException
+	{
+		CycleIterator it = this.cycler.iterator();
+		
+		int [] lastFlow = it.next();
+	
+		
+		//previous is at the beginning of the key, move through the key now.
+		//all reads go through the key
+		for(int i = 0; i < key.length(); i++)
+		{
+			char curr = key.charAt(i); 
+			while(lastFlow[FlowCycler.FLOWED_BASE] != curr) //does this automagically cast to char?
+			{
+				lastFlow = it.next();
+			}
+		}
+		
+		//now for the MID
+		if(this.mid != null && this.mid.MID.length() > 0)
+		{
+			//process the mid
+			
+			for(int i = 0; i < mid.MID.length(); i++)
+			{
+				char curr = mid.MID.charAt(i);
+				while(lastFlow[FlowCycler.FLOWED_BASE] != curr)
+				{
+					lastFlow = it.next();
+				}
+			}
+		}
+		else
+		{
+			//do nothing. 
+			//if you take the MIDS and primer away... there needs to be a default position?
+		}	
+		
+		//base position only corresponds to what is represented in the collapsed string
+		//collapsed string has the MID and PRIMER removed, and is trimmed.
+		
+		char [] collapsed = this.getCollapsedRead();
+		
+		if(collapsed[0] == 'N')
+		{
+			throw new NFoundAtReadStartException(this);
+		}
+		
+		int [] lastCalledFlow = lastFlow;
+		
+		for(int i = 0; i < collapsed.length; i++)
+		{
+			if(lastFlow[FlowCycler.FLOW_POSITION] >= flowPos)
+			{
+				return i - 1; //last called base
+			}
+				
+			while(collapsed[i] != lastFlow[FlowCycler.FLOWED_BASE])
+			{
+				if(collapsed[i] == 'N')
+				{
+					do
+					{
+						lastFlow = it.next();
+					}
+					while(lastFlow[FlowCycler.FLOWED_BASE] != lastCalledFlow[FlowCycler.FLOWED_BASE]);
+				}
+				else
+				{
+					lastFlow = it.next();
+				}
+			}
+			lastCalledFlow = lastFlow;
+		}
+		
+		return collapsed.length - 1; //last base is this. 
+		
+	}
+	
 	
 	/**
 	 * Flow to base pos.
@@ -406,6 +583,7 @@ public class Pyrotag
 	 * @param key the key
 	 * @return the int
 	 */
+	/*
 	public int flowToBasePos(int flowPos, String key)
 	{
 		int pos = flowsBetweenLastFlowAndSeqStart(Pyrotag.CYCLE_START, key); //incase the key does not start with the first nucleotide
@@ -446,7 +624,7 @@ public class Pyrotag
 		}
 		return Pyrotag.NO_CORRESPONDING_FLOW;
 	}
-	
+	*/
 	
 	/**
 	 * Sets the multiplex tag length.
@@ -628,10 +806,14 @@ public class Pyrotag
 		
 		sb.append(this.id + " " + this.desc);
 		sb.append(System.getProperty("line.separator"));
-		for(int i = 0; (i + width) < nucleotides.length; i+= width)
+		
+		int i = 0;
+		
+		while((i + width) <= nucleotides.length)
 		{
 			sb.append(nucleotides, i, width);
 			sb.append(System.getProperty("line.separator"));
+			
 			
 			if(qualities != null)
 			{
@@ -646,9 +828,16 @@ public class Pyrotag
 				sb.append(System.getProperty("line.separator"));	
 			}
 			
-			if(i + width > nucleotides.length)
+			
+			i+= width;
+			if((i + width - 1) >= nucleotides.length)
 			{
 				width = nucleotides.length - i;
+				
+				if(width == 0)
+				{
+					break;
+				}
 			}
 		}
 		return sb.toString();
@@ -891,6 +1080,7 @@ public class Pyrotag
 	public MIDPrimerCombo whichMID(LinkedList <MIDPrimerCombo> validTags)
 	{
 		HashMap <MIDPrimerCombo, Boolean> notMatched = new HashMap <MIDPrimerCombo, Boolean>();
+		
 		int endPos = -1;
 		
 		for(int i = 0; i < this.nucleotides.length; i++)

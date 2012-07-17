@@ -589,7 +589,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		this.setTextFieldSize(manhattanDistance);
 		manhattanDistance.setHorizontalAlignment(JTextField.RIGHT);
 		
-		String [] options = new String [] {AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL, AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL};
+		String [] options = new String [] {AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL, AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL, AcaciaConstants.OPT_ACACIA_IONTORRENT314_MODEL, AcaciaConstants.OPT_ACACIA_IONTORRENT316_MODEL};
 		javax.swing.SpinnerListModel errorModel = new SpinnerListModel(options);
 		errorModel.setValue(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL);	
 		

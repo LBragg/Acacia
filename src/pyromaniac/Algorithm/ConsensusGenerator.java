@@ -20,6 +20,8 @@ package pyromaniac.Algorithm;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+
+import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.Pair;
 import pyromaniac.DataStructures.PatriciaTrie;
 import pyromaniac.DataStructures.Pyrotag;
@@ -53,6 +55,7 @@ public interface ConsensusGenerator
 			HashSet <Pyrotag> tagsToProcess,
 			LinkedList <HashSet <Pyrotag>> consensusClusters,
 			HashMap<Pyrotag, Pair<Integer, Character>> tagToCurrPosInFlow,
+			FlowCycler cycler,
 			boolean varyIdentically
 	) throws Exception;
 }

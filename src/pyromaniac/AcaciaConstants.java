@@ -132,6 +132,10 @@ public final class AcaciaConstants
 		/** The Constant OPT_FLOW_KEY. */
 		public static final String OPT_FLOW_KEY = "FLOW_KEY";	
 		
+		/** The Constant OPT_FLOW_CYCLE_STRING */
+		public static final String OPT_FLOW_CYCLE_STRING = "FLOW_CYCLE_STRING";
+		
+		
 		/** The Constant OPT_MAX_RECURSE_DEPTH. */
 		public static final String OPT_MAX_RECURSE_DEPTH = "MAX_RECURSE_DEPTH";
 		
@@ -191,6 +195,13 @@ public final class AcaciaConstants
 		/** The Constant DEFAULT_OPT_FLOW_KEY. */
 		public static final String DEFAULT_OPT_FLOW_KEY = "TCAG";
 		
+		public static final String OPT_FLOW_CYCLE_454 = "TACG"; //double check this
+		
+		public static final String OPT_FLOW_CYCLE_ION_TORRENT = "TACGTACGTCTGAGCATCGATCGATGTACAGC";
+		
+		/** The Constant DEFAULT_OPT_FLOW_CYCLE_STRING */
+		public static final String DEFAULT_OPT_FLOW_CYCLE_STRING = OPT_FLOW_CYCLE_454;
+		
 		/** The Constant DEFAULT_OPT_TRUNCATE_CONSENSUS_TO_FLOW. */
 		public static final String DEFAULT_OPT_TRUNCATE_READ_TO_FLOW= "";
 		
@@ -240,6 +251,11 @@ public final class AcaciaConstants
 		/** The Constant FLOWSIM_PROBS_LOCATION. */
 		public static final String ACACIA_EMP_MODEL_TITANIUM_LOCATION;
 		
+		/** The Constant IONTORRENT_316_PROBS_LOCATION */
+		public static final String IONTORRENT_316_PROBS_LOCATION;
+		
+		/** The Constant IONTORRENT_314_PROBS_LOCATION */
+		public static final String IONTORRENT_314_PROBS_LOCATION;
 		
 		//IO constants
 		/** The Constant STANDARD_OUT_NAME. */
@@ -309,6 +325,11 @@ public final class AcaciaConstants
 		/** The Constant DEFAULT_OPT_SIGNIFICANT_WHEN_TWO. */
 		public static final String DEFAULT_OPT_SIGNIFICANT_WHEN_TWO = "TRUE";
 
+		/** These in-built ones are painful, and need to be replaced*/
+		
+		//might even have to be broken down into 316 200bp 316 100bp, 314 100bp 314 200bp
+		public static final String OPT_ACACIA_IONTORRENT316_MODEL = "IT_316";
+		public static final String OPT_ACACIA_IONTORRENT314_MODEL = "IT_314";
 		
 		
 		static
@@ -318,6 +339,9 @@ public final class AcaciaConstants
 			PYRONOISE_PROBS_LOCATION = "/data/QuinceProbs.csv";
 			FLOWSIM_PROBS_LOCATION = "/data/maldeEmpiricalDistributions.csv"; 
 			ACACIA_EMP_MODEL_TITANIUM_LOCATION = "/data/titanium_emp_nuc.csv";
+			IONTORRENT_316_PROBS_LOCATION = "/data/iontorrent_316.csv";
+			IONTORRENT_314_PROBS_LOCATION = "/data/iontorrent_314.csv";
+			
 			IUPAC_AMBIGUOUS_MAPPINGS.put('R', new char [] {'A', 'G'});
 			IUPAC_AMBIGUOUS_MAPPINGS.put('Y', new char [] {'C', 'T'});
 			IUPAC_AMBIGUOUS_MAPPINGS.put('S', new char [] {'G', 'C'});

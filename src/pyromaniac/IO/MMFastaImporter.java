@@ -30,6 +30,7 @@ import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MutableInteger;
 import pyromaniac.DataStructures.Pyrotag;
 import pyromaniac.DataStructures.Sequence;
@@ -71,20 +72,24 @@ public class MMFastaImporter implements TagImporter
 	/** The qual buffer. */
 	private MappedByteBuffer qualBuffer;
 	
+	private FlowCycler cycler;
+	
 	/**
 	 * Instantiates a new mM fasta importer.
 	 *
 	 * @param seqFile the seq file
 	 * @param qualFile the qual file
+	 * @param flowCycle 
 	 * @param logger the logger
 	 */
-	public MMFastaImporter(String seqFile, String qualFile, AcaciaLogger logger)
+	public MMFastaImporter(String seqFile, String qualFile, String flowCycle, AcaciaLogger logger)
 	{
 		this.seqFile = seqFile;
 		this.qualFile = qualFile;
 		this.logger = logger;
 		this.seqBuffer = null;
 		this.qualBuffer = null;
+		this.cycler = new FlowCycler(flowCycle, logger);
 		this.init();
 	}
 	
@@ -267,7 +272,7 @@ public class MMFastaImporter implements TagImporter
 			qualitySeq = processQualBlock(relQualBlock);
 		}
 		
-		Pyrotag p = new Pyrotag(pyrotagSeq.getId(), pyrotagSeq.getDesc(), pyrotagSeq, qualitySeq);
+		Pyrotag p = new Pyrotag(pyrotagSeq.getId(), pyrotagSeq.getDesc(), pyrotagSeq, qualitySeq, this.cycler);
 		
 		p.setInternalID(index);
 		return p;

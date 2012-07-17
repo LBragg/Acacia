@@ -28,6 +28,7 @@ import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MutableInteger;
 import pyromaniac.DataStructures.Pyrotag;
 import pyromaniac.DataStructures.Sequence;
@@ -64,17 +65,20 @@ public class MMFastqImporter implements TagImporter
 	/** The record buffer. */
 	private MappedByteBuffer recordBuffer;
 	
+	private FlowCycler cycler;
+	
 	/**
 	 * Instantiates a new mM fastq importer.
 	 *
 	 * @param fastqFile the fastq file
 	 * @param logger the logger
 	 */
-	public MMFastqImporter(String fastqFile, AcaciaLogger logger)
+	public MMFastqImporter(String fastqFile, String flowCycle, AcaciaLogger logger)
 	{
 		this.fastqFile = fastqFile;
 		this.logger = logger;
 		this.recordBuffer = null;
+		this.cycler = new FlowCycler(flowCycle, logger);
 		this.init();
 	}
 	
@@ -128,7 +132,7 @@ public class MMFastqImporter implements TagImporter
 
 		int state = -1;
 		char last = '\n';
-		
+
 		while(recordBuffer.position() != recordBuffer.capacity())
 		{					
 			int prevPos = recordBuffer.position();
@@ -208,7 +212,6 @@ public class MMFastqImporter implements TagImporter
 		char [] relRecordBlock = getBlock(this.recordStarts, index, this.recordBuffer);
 		
 		//construct the pyrotag in this block.
-		
 		Pyrotag p = processRecordBlock(relRecordBlock);
 		p.setInternalID(index);
 		return p;
@@ -278,7 +281,7 @@ public class MMFastqImporter implements TagImporter
 			
 			Sequence <Character> pyrotagSeq = new Sequence<Character> (nucleotides, idComp[0], idComp[1]);
 			Sequence <Integer> pyrotagQual = new Sequence <Integer>(qualities, idComp[0], idComp[1]);
-			Pyrotag p = new Pyrotag(idComp[0],idComp[1], pyrotagSeq, pyrotagQual);
+			Pyrotag p = new Pyrotag(idComp[0],idComp[1], pyrotagSeq, pyrotagQual, this.cycler);
 			
 			return p;
 		}
@@ -357,7 +360,9 @@ public class MMFastqImporter implements TagImporter
 				{
 					if(ACCEPTIBLE_IUPAC_CHARS.indexOf(curr) == -1)
 					{
-						throw new SeqFormattingException("Non-IUPAC character (" + curr + ") in sequence", this.fastqFile);
+						String seq = new String(pyrotagBlock);
+						
+						throw new SeqFormattingException("Non-IUPAC character (" + curr + ") in sequence : " + seq, this.fastqFile);
 					}
 					else
 					{

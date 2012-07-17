@@ -18,6 +18,10 @@
 
 package pyromaniac.Algorithm;
 
+import java.util.HashMap;
+
+import pyromaniac.DataStructures.FlowCycler;
+
 // TODO: Auto-generated Javadoc
 /**
  * The Interface OUFrequencyTable.
@@ -39,6 +43,10 @@ public interface OUFrequencyTable
 	
 	/** The Constant NO_FLOW. */
 	public static final int NO_FLOW = -1;
+	
+	public static final String RLE_LENGTH = "RLE_LENGTH";
+	public static final String FLOW_POSITION = "FLOW_POSITION";
+	
 
 	/**
 	 * Load probabilities.
@@ -62,5 +70,5 @@ public interface OUFrequencyTable
 	 * @param flowNumber the flow number
 	 * @return the probabilities
 	 */
-	public double [] getProbabilities(int obsMode, int flowNumber);
+	public double [] getProbabilities(HashMap <String, Object> factors, FlowCycler cycler);
 }

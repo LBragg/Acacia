@@ -27,6 +27,8 @@ import java.util.HashMap;
 import org.apache.commons.math.MathException;
 import org.apache.commons.math.distribution.NormalDistributionImpl;
 
+import pyromaniac.DataStructures.FlowCycler;
+
 // TODO: Auto-generated Javadoc
 /**
  * The Class MaldeOUCallFrequencyTable.
@@ -139,8 +141,11 @@ public class MaldeOUCallFrequencyTable implements OUFrequencyTable
 	/* (non-Javadoc)
 	 * @see pyromaniac.Algorithm.OUFrequencyTable#getProbabilities(int, int)
 	 */
-	public double[] getProbabilities(int obsMode, int flowNumber) 
+	public double[] getProbabilities(HashMap <String, Object> attributes, FlowCycler cycler) 
 	{
+		int flowNumber = (Integer) attributes.get(OUFrequencyTable.FLOW_POSITION);
+		int obsMode = (Integer) attributes.get(OUFrequencyTable.RLE_LENGTH);
+		
 		if(flowNumber < 1)
 			return null;
 		

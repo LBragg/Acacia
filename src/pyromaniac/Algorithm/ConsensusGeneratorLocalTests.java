@@ -27,6 +27,7 @@ import java.util.LinkedList;
 import pyromaniac.AcaciaConstants;
 import pyromaniac.AcaciaEngine;
 import pyromaniac.Algorithm.RLEAlignmentIndelsOnly.AlignmentColumn;
+import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.Pair;
 import pyromaniac.DataStructures.PatriciaTrie;
 import pyromaniac.DataStructures.Pyrotag;
@@ -52,18 +53,21 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 			HashSet <Pyrotag> tagsToProcess,
 			LinkedList <HashSet <Pyrotag>> consensusClusters,
 			HashMap<Pyrotag, Pair<Integer, Character>> tagToCurrPosInFlow,
+			FlowCycler cycler,
 			boolean varyIdentically) throws Exception 
 	{
 		if(tagsToProcess.size() == 1)
 		{	
 			consensusClusters.add(tagsToProcess);
+			
+			
 			return null;
 		}
 
 		
+		
 		//go through corrected branches here!!!
 		double thresholdPValue = AcaciaEngine.getEngine().parseSignificanceThreshold(settings.get(AcaciaConstants.OPT_SIGNIFICANCE_LEVEL));
-
 		OUFrequencyTable table = null;
 		
 		if(settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL))
@@ -74,6 +78,14 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		{
 			//this model is still be evaluated
 			table = new MaldeOUCallFrequencyTable(AcaciaConstants.ACACIA_EMP_MODEL_TITANIUM_LOCATION);
+		}
+		else if(settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_ACACIA_IONTORRENT316_MODEL))
+		{
+			table = new IonTorrentOUCallFrequency(AcaciaConstants.IONTORRENT_316_PROBS_LOCATION);
+		}
+		else if(settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_ACACIA_IONTORRENT314_MODEL))
+		{
+			table = new IonTorrentOUCallFrequency(AcaciaConstants.IONTORRENT_314_PROBS_LOCATION);
 		}
 		else //quince
 		{
@@ -118,7 +130,7 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 				double prop = (double)ac.getTags().size() / (double)initialSize; 
 
 				HypothesisTest test = processAlignmentColumn(logger, settings, tagToCurrPosInFlow, ac, 
-						tagsToProcess, table, thresholdPValue, varyingTogether, numDifferences, varyIdentically, false, ta);
+						tagsToProcess, table, thresholdPValue, varyingTogether, numDifferences, varyIdentically, false, ta, cycler);
 
 			
 				if(test != null && (minReadRepTruncation != null && minFlowTrunc != null && prop < minReadRepTruncation && minFlowTrunc <= test.getAvgFlowPos()))
@@ -145,6 +157,34 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 
 			columnIndex++;
 
+			char [] validBases = {'A', 'T', 'G', 'C'};
+				
+			for(char base: validBases)
+			{
+				AlignmentColumn insert = ac.getInsertionCorrespondingTo(base);
+				
+				if(insert != null)
+				{
+					HypothesisTest testInner = processAlignmentColumn(logger, settings, tagToCurrPosInFlow, insert, 
+							tagsToProcess, table, thresholdPValue, varyingTogether, numDifferences, varyIdentically, false, ta, cycler);
+
+					//at the end of the alignment
+					if(testInner == null)
+						continue;
+					
+					numTests++;
+					
+					if(testInner.isSignificantAbove() || testInner.isSignificantBelow())
+					{
+						numSignificant++;
+					}
+				}
+				
+			}
+		}
+			
+		//caveat is that if I change the alignment algorithm, such that it tolerates double insertions, this will break.
+			/*
 			//iterate through the insertion columns
 			AlignmentColumn firstInsert = ac.nextInsertionGivenLastFlow(lastChar);
 			AlignmentColumn lastInsert = firstInsert;
@@ -173,6 +213,7 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 			}
 			while(lastInsert != firstInsert);
 		}
+		*/
 
 		if(numSignificant == 0)
 		{
@@ -370,7 +411,7 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 
 						for(Pyrotag pMerged: merged)
 						{
-							otherBranches.remove(pMerged); //TODO: see if this makes a diff.
+							otherBranches.remove(pMerged);
 							otherBranches.put(pMerged, merged);
 						}
 					}
@@ -538,8 +579,13 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 			HashMap<Pyrotag, Integer> numDifferences, 
 			boolean varyIdentically, 
 			boolean verbose, 
-			RLEAlignmentIndelsOnly ta) throws Exception
+			RLEAlignmentIndelsOnly ta,
+			FlowCycler cycler
+	
+		) throws Exception
 			{
+		
+		verbose = false;
 		
 		//
 		HashMap <Integer, HashSet <Pyrotag>> observationsAtPosition = ac.getHPLengthToTags(tagsInCluster);
@@ -551,7 +597,6 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		HashMap <Integer, Integer> flowToNumReads = new HashMap <Integer, Integer>();
 
 		char currValue = ac.getValue();
-
 
 		if(verbose)
 		{
@@ -579,13 +624,34 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 				//get previous position in flow
 				Pair <Integer, Character> prevPosInFlow = tagToCurrPosInFlow.get(p);				
 
+				int prevPos = prevPosInFlow.getFirst();
+				
+				if(verbose)
+				{
+					logger.writeLog("Previous position: " + prevPos + "with char <" + prevPosInFlow.getSecond() + "> for read " + p.getID(), AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("Has observed length : " + obsLength + " for read " + p.getID(), AcaciaLogger.LOG_DEBUG);
+				}
+				
 				//calculate the distance between the flows.
-				int dist = p.flowsBetweenLastFlowAndChar(prevPosInFlow.getSecond(), currValue);
+				//how is it possible that the previous base is the same as the curr base?
 
-				//curr position is prev flow pos + dist
-				int currPosInFlow = prevPosInFlow.getFirst() + dist;				
-				tagToCurrPosInFlow.put(p, new Pair <Integer, Character> (currPosInFlow, currValue));
+				
+				int currPosInFlow = prevPosInFlow.getFirst();
+				
+				if(obsLength > 0)
+				{
+					int dist = p.getFlowCycler().minPossibleFlowsBetweenFlowPosXAndCharY(prevPos, currValue);
+					
 
+					if(verbose)
+					{
+						logger.writeLog("Dist is " + dist, AcaciaLogger.LOG_DEBUG);
+					}
+					
+					currPosInFlow += dist;
+					tagToCurrPosInFlow.put(p, new Pair <Integer, Character> (currPosInFlow, currValue)); //update
+				}
+					
 				//initialise flowToNumReads if not defined
 				if(!flowToNumReads.containsKey(currPosInFlow))
 				{
@@ -624,11 +690,11 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 
 		}
 
-		boolean verbose2 = false; //too much information from run test for significance
+		boolean verbose2 = verbose; //too much information from run test for significance
 		
 		//perform test for significance, get result
-		HypothesisTest res = this._runTestForSignificance(logger, mode, obsBelow,obsAbove, modeFreq,  
-				flowToNumReads, table, significanceLevel, verbose2);
+		HypothesisTest res = this._runTestForSignificance(logger, mode, obsBelow,obsAbove, modeFreq, 
+				flowToNumReads, table, significanceLevel, cycler, verbose2);
 
 		
 		
@@ -812,30 +878,46 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 	 * @param verbose the verbose
 	 * @return the hypothesis test
 	 * @throws Exception the exception
-	 */
-	private HypothesisTest _runTestForSignificance(AcaciaLogger logger, 
-			int modeVal, int obsBelow, int obsAbove, 
-			int obsAt, HashMap <Integer, Integer> flowPosToFreq, OUFrequencyTable table, double thresholdPValue, boolean verbose) throws Exception
+	 */	
+	private HypothesisTest _runTestForSignificance(
+			AcaciaLogger logger, 
+			int modeVal, 
+			int obsBelow, 
+			int obsAbove, 
+			int obsAt, 
+			HashMap <Integer, Integer> flowPosToFreq, 
+			OUFrequencyTable table, 
+			double thresholdPValue, 
+			FlowCycler cycler, 
+			boolean verbose) throws Exception
 			{
 
-				double [] weightedP = new double [3];
+		double [] weightedP = new double [3];
+		double flowSum = 0.0;
+		double numSeqs = 0.0;
 
-		
-				double flowSum = 0.0;
-				double numSeqs = 0.0;
-				
-				
+		//okay things might be relevant
+		//flow position, position in cycle, base, rle length, are all things that relate 
+
+
+		HashMap <String, Object> probFactors = new HashMap <String, Object>();
+		probFactors.put(OUFrequencyTable.RLE_LENGTH, modeVal);
+
+
 		for(Integer flowPos: flowPosToFreq.keySet())
 		{
-			double freq = flowPosToFreq.get(flowPos);
+			//replace this every time, to save on hashmap construction
+			probFactors.put(OUFrequencyTable.FLOW_POSITION, flowPos); 
 
+			double freq = flowPosToFreq.get(flowPos);
 			double seqProp =  freq / (double)(obsBelow + obsAt + obsAbove);
-			
+
 			flowSum+= (freq * flowPos);
 			numSeqs += freq;
-			
-			
-			double [] oldP = table.getProbabilities(modeVal, flowPos);		
+
+			double [] oldP = table.getProbabilities(probFactors, cycler);
+
+			//double [] oldP = table.getProbabilities(modeVal, flowPos);		
 			double [] rearrangedP = new double [] {oldP[OUFrequencyTable.EQUAL_TO], 
 					oldP[OUFrequencyTable.LESS_THAN], oldP[OUFrequencyTable.GREATER_THAN]};		
 
@@ -846,21 +928,12 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 			{
 				weightedP[i] += (seqProp * rearrangedP[i]);
 			}
-			
-			if(verbose)
-			{
-				logger.writeLog("Flow position: " + flowPos + " with " + freq + " sequences", AcaciaLogger.LOG_DEBUG);
-			}
 		}
 
+		probFactors = null; //clean up
+
 		double avgFlow = flowSum / numSeqs;
-		
-		if(verbose)
-		{
-			logger.writeLog("Weighted probabilities: " + weightedP[0] +", " + weightedP[1] + "," + weightedP[2], AcaciaLogger.LOG_DEBUG);
-			logger.writeLog("Obs at: " + obsAt + "Obs below: " + obsBelow + " obs Above: " + obsAbove + "length: " + modeVal, AcaciaLogger.LOG_DEBUG);
-		}
-		
+
 		HypothesisTest ht = null;
 		int minSize = 100;
 
@@ -888,6 +961,6 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 
 		ht.runTest();
 		return ht;
-			}
+	}
 	
 }

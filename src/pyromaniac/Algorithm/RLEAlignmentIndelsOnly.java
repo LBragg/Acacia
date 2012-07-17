@@ -210,10 +210,11 @@ public class RLEAlignmentIndelsOnly
 	 * Align.
 	 *
 	 * @param p the p
+	 * @param verbose 
 	 * @return true, if successful
 	 * @throws Exception the exception
 	 */
-	public boolean align(Pyrotag p) throws Exception
+	public boolean align(Pyrotag p, boolean verbose) throws Exception
 	{		
 		try
 		{
@@ -221,20 +222,13 @@ public class RLEAlignmentIndelsOnly
 			AlignmentColumn curr = this.head.child;
 			AlignmentColumn lastDefined = this.head;
 			
-			
-			
-			
-			LinkedList <PendingChange> pendingChanges = new LinkedList <PendingChange>();
-
-			boolean verbose = false;
-			
+			LinkedList <PendingChange> pendingChanges = new LinkedList <PendingChange>();			
 			SearchObject soStart = new SearchObject(curr, lastDefined, nodeBeforeLastMismatch, pendingChanges, p, 0, this, this.logger, 0, verbose);			
 			
 			boolean successful =  soStart.run();
 		
 			if(successful)
-			{		
-			
+			{			
 				for(PendingChange pc : soStart.pendingChanges)
 				{	
 					pc.performModification();
@@ -898,6 +892,7 @@ public class RLEAlignmentIndelsOnly
 		 * @return the alignment column
 		 * @throws Exception the exception
 		 */
+	/*
 		public AlignmentColumn nextInsertionGivenLastFlow(char lastFlow) throws Exception
 		{
 			char curr = lastFlow;
@@ -911,7 +906,7 @@ public class RLEAlignmentIndelsOnly
 					}	
 				}
 				
-				if(! Pyrotag.flowCycle.containsKey(curr))
+				if(! Pyrotag.get.containsKey(curr))
 				{
 					throw new Exception("Curr has invalid char: " + curr);
 				}
@@ -921,7 +916,8 @@ public class RLEAlignmentIndelsOnly
 
 			return null;
 		}
-
+		*/
+		
 
 		/**
 		 * Sets the flow number.

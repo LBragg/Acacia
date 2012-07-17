@@ -21,12 +21,17 @@ package pyromaniac.Algorithm;
 import java.io.BufferedWriter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.TreeSet;
 
 import pyromaniac.AcaciaConstants;
 import pyromaniac.AcaciaEngine;
+import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MIDPrimerCombo;
 import pyromaniac.DataStructures.Pair;
 import pyromaniac.DataStructures.PatriciaTrie;
@@ -329,26 +334,66 @@ public class SimpleClusterAligner implements ClusterAligner
 		//prepare tag to flow position hash
 		LinkedList <Pyrotag> unalignableTags = new LinkedList <Pyrotag>();
 		
+		int numAlignments = 0;
+		
+		
+		
+		
 		for(Pyrotag p: cluster)
 		{
 			
-			boolean alignable = ta.align(p);
+			//TODO: fix
+			boolean alignable = ta.align(p, false);		
+			numAlignments++;
+	
 			if(alignable)
 			{
 				count++;
 				
+				if(verbose)
+				{
+					logger.writeLog("Could align p: " + p.getID(), AcaciaLogger.LOG_DEBUG);
+				}
 				
-				int posAfterKeyAndMID = p.getFlowForCollapsedReadPos(settings.get(AcaciaConstants.OPT_FLOW_KEY), 0);	
-				MIDPrimerCombo mid = p.getMultiplexTag();							
-				char currPos = (mid == AcaciaConstants.NO_MID_GROUP)? lastInKey : mid.getMID().charAt(mid.getMID().length() - 1);
+				
+				//this returns the flow position of the first called base after the key/MID/primer
+				//but this flow position does NOT correspond to the last base of the primer.
+				//so either need to return the flow of the last base in the reference
+				//or use teh base of the first char in the collapsed read
+				// might make moer sense to return the last called base in the primer for the below.
+				//int [] flowPosAfterKeyMID = p.getFlowForCollapsedReadPos(settings.get(AcaciaConstants.OPT_FLOW_KEY), 0); 
 				
 				
+				int [] flowPosAfterKeyMID = p.getFlowPositionForCallPriorToCollapsedReadStart(settings.get(AcaciaConstants.OPT_FLOW_KEY));
+				//base, flowpos, cycle pos
+				
+				//position in flow corresponding to last base of MID or last base of key.
+				int posAfterKeyAndMID = flowPosAfterKeyMID[FlowCycler.FLOW_POSITION];
+				
+				//base corresponding to either last of key or last of MID/primer. Just realise that below is probably wrong -- are you offsetting for primer and mid or just mid??
+				//definitely after the primer.
+				MIDPrimerCombo mid = p.getMultiplexTag();						
+				String midPrimer = mid.getMIDPrimerSequence();
+				
+				char currPos = (mid == AcaciaConstants.NO_MID_GROUP)? lastInKey : midPrimer.charAt(midPrimer.length() - 1);
+				
+				//if I change this, such that its the iterator... would it be any use?
 				tagToCurrPosInFlow.put(p, new Pair <Integer, Character>(posAfterKeyAndMID,currPos));					
 			}
 			else
 			{
+				if(verbose)
+				{
+					logger.writeLog("Could not align p: " + p.getID(), AcaciaLogger.LOG_DEBUG);
+				}
+				
 				unalignableTags.add(p);				
 			}
+		}
+		
+		if(verbose)
+		{
+			logger.writeLog("Done!", AcaciaLogger.LOG_DEBUG);
 		}
 		
 		Triplet <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>, LinkedList <Pyrotag>> result = new Triplet 

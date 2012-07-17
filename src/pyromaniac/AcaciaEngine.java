@@ -59,6 +59,7 @@ import pyromaniac.Algorithm.OligomerClusterGenerator;
 import pyromaniac.Algorithm.SimpleClusterAligner;
 import pyromaniac.Algorithm.RLEAlignmentIndelsOnly;
 import pyromaniac.Algorithm.RLEAlignmentIndelsOnly.AlignmentColumn;
+import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MIDPrimerCombo;
 import pyromaniac.DataStructures.Pair;
 import pyromaniac.DataStructures.PatriciaTrie;
@@ -132,7 +133,8 @@ public class AcaciaEngine
 				AcaciaConstants.OPT_MIN_READ_REP_BEFORE_TRUNCATION,
 				AcaciaConstants.OPT_MIN_FLOW_TRUNCATION, //paired with the percentage of reads covering blah
 				AcaciaConstants.OPT_FILTER_READS_WITH_N_BEFORE_POS,
-				AcaciaConstants.OPT_SIGNIFICANT_WHEN_TWO				
+				AcaciaConstants.OPT_SIGNIFICANT_WHEN_TWO,
+				AcaciaConstants.OPT_FLOW_CYCLE_STRING
 		};
 		
 		String [] tmpSettingValues = 
@@ -160,7 +162,8 @@ public class AcaciaEngine
 				AcaciaConstants.DEFAULT_OPT_MIN_READ_REP_BEFORE_TRUNCATION, 
 				AcaciaConstants.DEFAULT_OPT_MIN_FLOW_TRUNCATION,
 				AcaciaConstants.DEFAULT_FILTER_N_BEFORE_POS,
-				AcaciaConstants.DEFAULT_OPT_SIGNIFICANT_WHEN_TWO
+				AcaciaConstants.DEFAULT_OPT_SIGNIFICANT_WHEN_TWO,
+				AcaciaConstants.DEFAULT_OPT_FLOW_CYCLE_STRING
 		};
 		
 		settingKeys = tmpSettingKeys;
@@ -350,7 +353,7 @@ public class AcaciaEngine
 		int minReadLength = (int) (meanLength - (numStdDev * stdDevRead));
 		int maxReadLength = (int) (meanLength + (numStdDev * stdDevRead));	
 		
-		logger.writeLog("Accepting reads in the range: " + minReadLength + " - " + maxReadLength + System.getProperty("line.separator"), AcaciaLogger.LOG_PROGRESS);
+		logger.writeLog("Accepting reads in the range: " + minReadLength + " - " + maxReadLength, AcaciaLogger.LOG_PROGRESS);
 		
 		int minCollapsedSize = AcaciaConstants.DEFAULT_OPT_TRIM_COLLAPSED;
 		int minQual = Integer.parseInt(settings.get(AcaciaConstants.OPT_MIN_AVG_QUALITY));
@@ -384,19 +387,20 @@ public class AcaciaEngine
 			LinkedList <Pyrotag> seqs = rc.MIDToSequences.get(midPrimer);
 		
 			for(Pyrotag p: seqs)
-			{
+			{	
 				int trimLength = trimLengthGeneral; //overall trim length.
+				
 				boolean satisfyOverallLength = (p.getReadString().length >= minReadLength) && (p.getReadString().length <= maxReadLength);
 				
 				
+				//trim read to a particular flow position
 				if(!
 						(settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW) == null || settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW).equals("null")
 						|| settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW).equals("")))
 				{
 					int flowToTrimTo = Integer.parseInt(settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW));
-					int basePosForFlow = p.flowToBasePos(flowToTrimTo, settings.get(AcaciaConstants.OPT_FLOW_KEY));
-
-					
+					int basePosForFlow = p.flowPosToBasePos(flowToTrimTo, settings.get(AcaciaConstants.OPT_FLOW_KEY));
+	
 					if(basePosForFlow != Pyrotag.NO_CORRESPONDING_FLOW)
 					{
 						if(trimLength > 0)
@@ -449,11 +453,12 @@ public class AcaciaEngine
 				 */
 				
 				
+				
 				if(satisfyOverallLength && 
 						collapsed.length >=  minCollapsedSize
 						&& (p.getQualities() == null || p.getUntrimmedAvgQuality() >= minQual) 
 						&& ! p.hasWobbleInProcessedString() 
-						&& (firstN == Pyrotag.NO_N || (firstFlowForNs > minNFlowPos))
+						&& (firstN == Pyrotag.NO_N || (firstFlowForNs[FlowCycler.FLOW_POSITION] > minNFlowPos))
 					)
 				{
 					
@@ -491,7 +496,7 @@ public class AcaciaEngine
 							logger.writeLog("Outside acceptable size range [ " + minReadLength + " - " + maxReadLength + " ]: " + p.getID(), AcaciaLogger.LOG_DEBUG);
 					}
 					
-					if(firstN > 0  && firstFlowForNs < minNFlowPos)
+					if(firstN > 0  && firstFlowForNs[FlowCycler.FLOW_POSITION] < minNFlowPos)
 					{
 						if(verbose)
 							logger.writeLog("Has N's: " + p.getID(), AcaciaLogger.LOG_DEBUG);
@@ -589,6 +594,9 @@ public class AcaciaEngine
 				throw new InterruptedException("Job cancelled");
 			}
 
+			
+			FlowCycler fc = new FlowCycler(settings.get(AcaciaConstants.OPT_FLOW_CYCLE_STRING), logger);
+			
 			//all tags to be processed must have a valid MID if mids were specified by the user.
 			LinkedList <MIDPrimerCombo> aggregateAs = new LinkedList <MIDPrimerCombo>();
 			//sets up the mids to use.
@@ -636,18 +644,13 @@ public class AcaciaEngine
 
 				clusterer.initialise(perfectClusters, settings, logger, outputHandles);
 				clusterer.runClustering();
-
-				logger.writeLog("After recruiting erroneous reads", AcaciaLogger.LOG_PROGRESS);
-
+				
+				logger.writeLog("There are " + perfectClusters.size() + " after hexamer recruiting", AcaciaLogger.LOG_PROGRESS);
 				logger.writeLog("Performing error correction on clusters...", AcaciaLogger.LOG_PROGRESS);
 				//at this point, do not care about the relationship between clusters...
 				
 				for(String clusterRep: perfectClusters.keySet())
-				{
-					 
-					//so perfect clusters is fine too.
-					
-					
+				{	
 					LinkedList <Pyrotag> clusterMembers = perfectClusters.get(clusterRep);
 					
 					//alignment for the cluster				
@@ -889,7 +892,8 @@ public class AcaciaEngine
 			HashMap<String, BufferedWriter> outputHandles, 
 			RLEAlignmentIndelsOnly motherAlign,
 			HashMap<Pyrotag, Pair<Integer, Character>> motherFlow,
-			HashMap<Pyrotag, Integer> representativeSeqs
+			HashMap<Pyrotag, Integer> representativeSeqs,
+			FlowCycler fc
 			//, HashSet <Pyrotag> singletons //to be added later -- these are guys thrown out during the alignment process.
 			
 	) throws Exception
@@ -898,17 +902,16 @@ public class AcaciaEngine
 		int numCorrected = 0; 
 		HashSet <Pyrotag> toProcess = motherAlign.getAllTags();	 //grabs the results of the last run	
 
-
+		
+		
+		
 		//running over ThreadedAlignment... always clone the flow hash, in preparation for error correction later
 		HashMap <Pyrotag, Pair <Integer,Character>> flowMap = cloneFlowHash(motherFlow); //this cloning operation is unavoidable unless huge changes made. 
 
 		LinkedList <HashSet <Pyrotag>> consensusClusters = new LinkedList<HashSet<Pyrotag>>();
-		
-		
-		
 		//first is the consensus members, and the second is the other sets.
 		UnprocessedPyrotagResult failedFirst =
-			ConsensusGeneratorLocalTests.getInstance().generateConsensus(logger, settings, motherAlign, toProcess, consensusClusters, flowMap, false);
+			ConsensusGeneratorLocalTests.getInstance().generateConsensus(logger, settings, motherAlign, toProcess, consensusClusters, flowMap, fc, false);
 
 						
 		if(failedFirst != null && failedFirst.getTags().size() > 0)
@@ -924,7 +927,7 @@ public class AcaciaEngine
 				//TODO: vary identically is deprecated parameter, need to remove eventually.
 				//prior to this, consensus clusters is empty.
 				
-				UnprocessedPyrotagResult failedSecond = ConsensusGeneratorLocalTests.getInstance().generateConsensus(logger, settings, motherAlign, nc, consensusClusters, flowMapInner, false); 
+				UnprocessedPyrotagResult failedSecond = ConsensusGeneratorLocalTests.getInstance().generateConsensus(logger, settings, motherAlign, nc, consensusClusters, flowMapInner, fc, false); 
 
 				//last resource is trie.
 				if(failedSecond != null && failedSecond.getTags().size() > 0)
@@ -998,6 +1001,8 @@ public class AcaciaEngine
 		
 		while (p != null) 
 		{
+	//		System.out.println("P is " + p.getID());
+	//		System.out.println("MID matching");
 			MIDPrimerCombo matching = p.whichMID(validTags);
 				
 			if(matching == null)
@@ -1012,7 +1017,7 @@ public class AcaciaEngine
 				continue;
 			}
 			
-			//this all regards to the MIDS - but it should be thrown away.
+	//		System.out.println("Set MID matching");
 			p.setMIDPrimerCombo(matching); //may already be initialised?
 			
 			if(! MIDToSequences.containsKey(matching))
@@ -1038,7 +1043,10 @@ public class AcaciaEngine
 				MIDqualities.put(matching, MIDqualities.get(matching) +  p.getUntrimmedAvgQuality());
 			}
 
+		//	System.out.println("Getting collapsed read");
+			
 			char [] collapsedReadMinusMid = p.getCollapsedRead();
+			
 			if(!MIDcollapsedSeqLength.containsKey(matching))
 			{
 				MIDcollapsedSeqLength.put(matching, 0);
@@ -1335,14 +1343,19 @@ public class AcaciaEngine
 			//System.out.println("Getting importer from " + settings.get(AcaciaConstants.OPT_FASTA_LOC));
 			String fastaFile = settings.get(AcaciaConstants.OPT_FASTA_LOC);
 			String qualFile = settings.get(AcaciaConstants.OPT_QUAL_LOC);
-			importer = new MMFastaImporter(fastaFile, qualFile, logger);
+			
+			String flowCycle = settings.get(AcaciaConstants.OPT_FLOW_CYCLE_STRING);
+			
+			importer = new MMFastaImporter(fastaFile, qualFile, flowCycle, logger);
 			return importer;
 		}
 		else if(settings.get(AcaciaConstants.OPT_FASTQ).equals("TRUE"))
 		{
 		//	System.out.println("Getting importer from " + settings.get(AcaciaConstants.OPT_FASTQ_LOC));
 			String fastqFile = settings.get(AcaciaConstants.OPT_FASTQ_LOC);
-			importer = new MMFastqImporter(fastqFile, logger);
+			String flowCycle = settings.get(AcaciaConstants.OPT_FLOW_CYCLE_STRING);
+			
+			importer = new MMFastqImporter(fastqFile, flowCycle, logger);
 			return importer;
 		}
 		else

@@ -23,6 +23,7 @@ import org.apache.commons.math.MathException;
 import org.apache.commons.math.distribution.NormalDistributionImpl;
 
 import pyromaniac.Algorithm.OUFrequencyTable;
+import pyromaniac.DataStructures.FlowCycler;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -115,8 +116,11 @@ public class QuinceFrequencyTable implements OUFrequencyTable
 	/* (non-Javadoc)
 	 * @see pyromaniac.Algorithm.OUFrequencyTable#getProbabilities(int, int)
 	 */
-	public double [] getProbabilities(int mode, int flowNumber)
+	public double [] getProbabilities(HashMap <String, Object> factors, FlowCycler cycler)
 	{
+		int mode = (Integer)factors.get(OUFrequencyTable.RLE_LENGTH);
+		int flowNumber = (Integer)factors.get(OUFrequencyTable.FLOW_POSITION);
+		
 		if(this.probabilities.containsKey(mode))
 		{
 			return this.probabilities.get(mode);

@@ -338,7 +338,7 @@ public final class AcaciaConstants
 			
 			DEFAULT_OPT_MID_LOC = "data" + AcaciaMain.getPlatformSpecificPathDivider()
 			+ "ROCHE_5BASE_ACACIA.mids";
-			DEFAULT_OPT_OUTPUT_PREFIX = AcaciaMain.getPlatformSpecificPathDivider() + "Acacia_out";
+			DEFAULT_OPT_OUTPUT_PREFIX = "acacia_out";
 		}
 		
 	  /**

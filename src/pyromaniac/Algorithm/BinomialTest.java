@@ -67,12 +67,20 @@ public class BinomialTest extends HypothesisTest
 			double obsErrorFreqAbove = (double) observationsAboveMode;
 			double errorProbFreqAbove = P[2];
 			
+			//P(X >= x)
 			BinomialDist binomialDistOvercall = new BinomialDist(this.N, errorProbFreqAbove);
 			double pAbove = binomialDistOvercall.barF(obsErrorFreqAbove);
+			
 				
+			this.p = pAbove; //regardless of significance
+			
 			if (this.alpha > 0 ) 
 			{
-				this.significantAbove = (pAbove <= this.alpha);
+				this.significantAbove = (pAbove <= this.alpha);	
+				if(verbose)
+				{
+					logger.writeLog("Significant above: p=" + pAbove + "and alpha= " + this.significantAbove, AcaciaLogger.LOG_DEBUG);
+				}
 			}
 			else
 			{
@@ -86,9 +94,16 @@ public class BinomialTest extends HypothesisTest
 			
 			double pBelow = binomialDistUndercall.barF(obsErrorFreqBelow);
 			
+			
 			if (this.alpha > 0 ) 
 			{
 				this.significantBelow = (pBelow <= this.alpha);
+				if(this.significantBelow)//if significant
+					this.p = pBelow; 	
+				if(verbose)
+				{
+					logger.writeLog("Significant below: p=" + pBelow + "and alpha= " + this.significantBelow, AcaciaLogger.LOG_DEBUG);
+				}
 			}
 			else
 			{

@@ -127,6 +127,11 @@ public class AcaciaMain
 	/** The Constant STANDARD_DEBUG_NAME. */
 	static final String STANDARD_DEBUG_NAME;
 	
+	static final String STANDARD_OUT_SUFFIX;
+	static final String STANDARD_ERR_SUFFIX;
+	
+	static final String STANDARD_DEBUG_SUFFIX;
+	
 	static 
 	{
 		WATTLE_LOC = "/images/acacia_small_wattle_icon.png";
@@ -135,6 +140,10 @@ public class AcaciaMain
 		STANDARD_OUT_NAME = "acacia_standard_output.txt";
 		STANDARD_ERR_NAME = "acacia_standard_error.txt";
 		STANDARD_DEBUG_NAME = "acacia_standard_debug.txt";
+		
+		STANDARD_OUT_SUFFIX = "stdout.txt";
+		STANDARD_ERR_SUFFIX = "stderr.txt";
+		STANDARD_DEBUG_SUFFIX = "stddebug.txt";
 	}
 
 	/**

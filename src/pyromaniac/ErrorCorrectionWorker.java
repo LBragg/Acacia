@@ -95,6 +95,7 @@ public class ErrorCorrectionWorker extends SwingWorker<Void, Void>
 			AcaciaEngine.getEngine().initLogFiles(this.runSettings, this.logger,true, validMIDS);
 			AcaciaEngine.getEngine().runAcacia(this.runSettings, this.validMIDS, logger, this, AcaciaEngine.getVersion());
 			logger.flushLogs();
+			logger.removeLogFiles(); //TODO: this was changed.
 		}
 		catch(InterruptedException ie)
 		{

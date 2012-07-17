@@ -25,7 +25,9 @@ import java.util.Set;
 
 import pyromaniac.AcaciaConstants;
 import pyromaniac.DataStructures.MutableInteger;
+import pyromaniac.DataStructures.Pair;
 import pyromaniac.DataStructures.Pyrotag;
+import pyromaniac.IO.AcaciaLogger;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -59,7 +61,8 @@ public class OligomerClusterGenerator extends ClusterGenerator
 		HashMap <String, Integer> hexToPos = new HashMap <String, Integer>();
 		MutableInteger index = new MutableInteger(0); 
 		
-		HashMap <String, String> mergeThisWithThat = new HashMap <String, String>();
+		LinkedList <Pair <String, String>> mergeThisWithThat = new LinkedList <Pair <String, String>>();
+		
 		Integer minimumHamming = Integer.parseInt(settings.get(AcaciaConstants.OPT_MAXIMUM_MANHATTAN_DIST));
 		
 		int prefixLength = -1;
@@ -72,17 +75,29 @@ public class OligomerClusterGenerator extends ClusterGenerator
 		for(String seq: initialClusters.keySet())
 		{
 			if(prefixLength == -1)
-				prefixLength = seq.length();
+				prefixLength = seq.length(); //was determined in the perfect clusters original case.
 			hexReps.put(seq, getHex(seq, hexToPos, index));
 		} //initialises the hexamer representations of each 'perfect identity representative'
 	
 		LinkedList <String> freqSortedList = sortedBasedOnFreq(initialClusters);
 		
-		//all things for tracking whilst using an iterator.
-		String toProcess = null;
-		String nextToProcess = null;
+
+		boolean verbose = false;
 		
+		if(verbose)
+		{
+			for(String s: freqSortedList)
+			{
+				logger.writeLog("Sorted on size: " + initialClusters.get(s).size() + ", rep: " + s, AcaciaLogger.LOG_DEBUG);
+			}
+		}
+		
+		
+		//all things for tracking whilst using an iterator.
+
+		String toProcess = null;
 		boolean done = false;
+		
 		
 		//DONE means I have worked my way up the list based on abundance, and 
 		//identified the best match for each sequence further up in the list
@@ -92,18 +107,20 @@ public class OligomerClusterGenerator extends ClusterGenerator
 			Iterator <String> it = freqSortedList.iterator(); //have to keep going through the list, and don't have a pointer to the last compared :/
 			
 			int ctr = 0;
-			boolean seen = false;
+			//boolean seen = false;
+			boolean processed = true; //assume it is processed
 			
 			int bestMatch = -1;
 			int bestDist = 100000; //arbitrarily large distance
-			
+			int bestClusterSize = 0;
 
 			//to process is the first in the list, assuming it is low abundance.
 			if(it.hasNext() && toProcess == null)
 			{
-				toProcess = it.next();
+				toProcess = it.next(); //first element is the first to Process
 				ctr++;
-				seen = true;
+				processed = false; //have not processed the prefix 'processing'.
+				//seen = true;
 			}
 			
 			//this seems to only happen if there is only one rep to begin with, rare!
@@ -114,36 +131,83 @@ public class OligomerClusterGenerator extends ClusterGenerator
 			
 			while(it.hasNext())
 			{
-				String curr = it.next();
-				if(nextToProcess == null)
+				String curr = it.next(); //get the next element
+				
+				if(verbose)
 				{
-					nextToProcess = curr;
+					logger.writeLog("toProcess: " + toProcess + " with " + initialClusters.get(toProcess).size(),AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("Current prefix is: " + curr + ", consisting of " + initialClusters.get(curr).size() + "tags!", AcaciaLogger.LOG_DEBUG);
 				}
 				
-				if(curr == toProcess)
+				if(processed && curr == toProcess)//working back through the iterator, start at the next spot!
 				{
+					if(verbose)
+					{
+						System.out.println("Curr == lastProcessed");
+					}
+					
 					if(it.hasNext()) //process them!
 					{
-						nextToProcess = it.next();
+						if(verbose)
+						{
+							System.out.println("There are more to process");
+						}
 						ctr++;
-						seen = true;					
+						toProcess = it.next();
+						processed = false;				
+						
+						if(!it.hasNext())
+						{
+							done = true;
+						}
 					}
 					else
 					{
+						if(verbose)
+						{
+							System.out.println("We are done");
+						}
 						done = true;
 					}
 				}
-				else if(seen)
+				else if(!processed)
 				{
+					//we are going to process "curr"
 					int [] hexToProcess = hexReps.get(toProcess);
 					int [] hexCurr = hexReps.get(curr);
 					
+					
 					int dist = calculateHexDist(hexToProcess, hexCurr);
 					
-					if(dist < bestDist)
+
+					if(verbose)
 					{
+						logger.writeLog("curr: " + curr + " with " + initialClusters.get(curr).size(),AcaciaLogger.LOG_DEBUG);
+						logger.writeLog("toProcess: " + toProcess + " with " + initialClusters.get(toProcess).size(),AcaciaLogger.LOG_DEBUG);
+						logger.writeLog("dist: " + dist, AcaciaLogger.LOG_DEBUG);
+						
+						LinkedList <Pyrotag> currCluster = initialClusters.get(curr);
+						LinkedList <Pyrotag> processCluster = initialClusters.get(toProcess);
+						
+						if(currCluster.size() == 1)
+						{
+							logger.writeLog("Curr contains: " + currCluster.getFirst().getID(), AcaciaLogger.LOG_DEBUG);
+							logger.writeLog("Process contains: " + processCluster.getFirst().getID(), AcaciaLogger.LOG_DEBUG);
+						}
+						
+					}
+					
+					//better to merge with the biggest cluster
+					if(dist <= bestDist && dist <= minimumHamming && bestClusterSize < initialClusters.get(curr).size())
+					{
+						if(verbose)
+						{
+							logger.writeLog("Dist is < bestDist: " + dist + " < " + bestDist,AcaciaLogger.LOG_DEBUG);
+						}
+						
 						bestDist = dist;
 						bestMatch = ctr;
+						bestClusterSize = initialClusters.get(curr).size();
 					}
 				}
 				ctr++;
@@ -151,22 +215,21 @@ public class OligomerClusterGenerator extends ClusterGenerator
 			
 			if(bestDist < minimumHamming)
 			{
-				mergeThisWithThat.put(toProcess, freqSortedList.get(bestMatch));
+				if(verbose)
+				{
+					logger.writeLog("bestDist less than min hamming: " + bestDist, AcaciaLogger.LOG_DEBUG);
+				}
+				mergeThisWithThat.add(new Pair <String, String> (toProcess, freqSortedList.get(bestMatch)));
 			}
-			toProcess = nextToProcess;
 			//adding this
-			seen = false;
+			processed = true;
 		}		
 		
 		//merge this with that - does not seem to be used.
-		for(String smallClusterRep: mergeThisWithThat.keySet())
+		for(Pair <String, String> toMerge: mergeThisWithThat)
 		{
-			String bigClusterRep = mergeThisWithThat.get(smallClusterRep);
-			
-			while(! initialClusters.containsKey(bigClusterRep))
-			{
-				bigClusterRep = mergeThisWithThat.get(bigClusterRep); //recursive
-			}
+			String smallClusterRep = toMerge.getFirst();
+			String bigClusterRep = toMerge.getSecond();
 			
 			if(bigClusterRep == null)
 			{

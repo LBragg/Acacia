@@ -141,16 +141,24 @@ public class MMFastqImporter implements TagImporter
 				int posInFile = prevPos + i ;
 
 				//I see a fastq header, I am either at beginning of file, or last saw the quality line...
-				if(curr == BEGINNING_FASTQ_SEQ && (state == -1 || state == 2) & (last == '\n' || last == '\r'))
+				if(curr == BEGINNING_FASTQ_SEQ && (state == -1 || state == 4))
 				{
 					seqStartsLL.add(posInFile);
 					state = 1;
+					
 				}
 				else if (curr == BEGINNING_FASTQ_QUAL && (state == 1))
 				{
 					state = 2;
 				}
-				
+				else if((curr ==  '\n' || curr == '\r') & state == 2)
+				{
+					state = 3;
+				}
+				else if ((curr ==  '\n' || curr == '\r') & state == 3)
+				{
+					state = 4;
+				}
 				last = curr;
 			}
 			

@@ -973,4 +973,30 @@ public boolean hasWobbleInProcessedString()
 		}
 		return false;
 	}
+
+
+public class NFoundAtReadStartException extends Exception
+{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	public NFoundAtReadStartException(Pyrotag p)
+	{
+		super("First base of " + p.getID() + " is an N");
+	}
+}
+class ReadWithZeroLengthException extends Exception
+{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	public ReadWithZeroLengthException(Pyrotag p)
+	{
+		super("When stripped of key, mid " + p.getID() + " has zero length!");
+	}
+}
+
 }

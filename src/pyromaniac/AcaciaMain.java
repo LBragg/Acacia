@@ -475,11 +475,8 @@ public class AcaciaMain
 			
 			LinkedList <MIDPrimerCombo> validTags = null;
 			
-			//System.out.println("Settings is <" + settings.get(AcaciaConstants.OPT_MID) + ">");
-			
 			if(settings.get(AcaciaConstants.OPT_MID).equals(AcaciaConstants.OPT_LOAD_MIDS))
 			{
-				System.out.println("Running valid tags");
 				validTags = engine.loadMIDS(settings.get(AcaciaConstants.OPT_MID_FILE), logger);
 			}
 			else
@@ -591,7 +588,7 @@ public class AcaciaMain
 					", " + AcaciaConstants.OPT_ROCHE_5MID);
 		}
 		
-		if(midOption.equals(AcaciaConstants.OPT_LOAD_MIDS) &! new File(settings.get(AcaciaConstants.OPT_MID_FILE)).exists())
+		if(midOption.equals(AcaciaConstants.OPT_LOAD_MIDS) && ! new File(settings.get(AcaciaConstants.OPT_MID_FILE)).exists())
 		{
 			throw new Exception("Specified MID file does not exist: " + settings.get(AcaciaConstants.OPT_MID_FILE));
 		}

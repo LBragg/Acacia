@@ -659,16 +659,21 @@ public class AcaciaEngine
 					
 					//alignment only allows sequence to belong to one cluster.
 					
+					logger.writeLog("Generating alignment of " + perfectClusters.get(clusterRep).size() + " reads...", AcaciaLogger.LOG_PROGRESS);
+					
 					//run the alignment algorithm, it will populate the results collections.
 					SimpleClusterAligner.getInstance().generateAlignments(logger, settings, clusterMembers, clusterRep, outputHandles, 
 							representativeSeqs, mainAlignRes, singletons);
 
 					while(mainAlignRes.size() > 0)
 					{
-						Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>> alignRes = mainAlignRes.pop();	
+						Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>> alignRes = mainAlignRes.pop();
+						
+						logger.writeLog("Generating consensus of " + alignRes.getSecond().size() + " reads...", AcaciaLogger.LOG_PROGRESS);
+						
 						
 						///can I pass in the alignment singletons here... to see if they will align using a substitution only aligner? 
-						numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), alignRes.getSecond(), representativeSeqs);
+						numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), alignRes.getSecond(), representativeSeqs, fc);
 						
 						//numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), alignRes.getSecond(), representativeSeqs, singletons);
 						//this above should remove any singletons that could be recruited?

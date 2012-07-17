@@ -257,7 +257,7 @@ public class TagInputPanel extends JPanel implements ActionListener,ListSelectio
 	private JTextField trimToLength;
 	
 	/** The hamming distance. */
-	private JTextField hammingDistance;
+	private JTextField manhattanDistance;
 	
 	/** The hamming align distance. */
 	private JTextField hammingAlignDistance;
@@ -583,11 +583,11 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		adjustLabel(maxHammingDistLabel);
 		setDimensionsToDefault(maxHammingDistLabel);
 		
-		this.hammingDistance = new JTextField();
-		this.hammingDistance.setText(AcaciaConstants.DEFAULT_OPT_MAXIMUM_MANHATTAN_DIST);
-		this.setDimensionsToDefault(hammingDistance);
-		this.setTextFieldSize(hammingDistance);
-		hammingDistance.setHorizontalAlignment(JTextField.RIGHT);
+		this.manhattanDistance = new JTextField();
+		this.manhattanDistance.setText(AcaciaConstants.DEFAULT_OPT_MAXIMUM_MANHATTAN_DIST);
+		this.setDimensionsToDefault(manhattanDistance);
+		this.setTextFieldSize(manhattanDistance);
+		manhattanDistance.setHorizontalAlignment(JTextField.RIGHT);
 		
 		String [] options = new String [] {AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL, AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL};
 		javax.swing.SpinnerListModel errorModel = new SpinnerListModel(options);
@@ -659,7 +659,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		
 		
 		mismatches.add(maxHammingDistLabel);
-		mismatches.add(hammingDistance);
+		mismatches.add(manhattanDistance);
 		mismatches.add(helpPanelMaxHamming);
 
 		mismatches.add(errorModelLabel);
@@ -1579,23 +1579,23 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			}
 		}
 		
-		int hamDist = 0;
-		if(this.hammingDistance.getText().length() > 0)
+		int manDist = 0;
+		if(this.manhattanDistance.getText().length() > 0)
 		{
 			boolean error = false;
 			try
 			{
-				hamDist = Integer.parseInt(this.hammingDistance.getText());
+				manDist = Integer.parseInt(this.manhattanDistance.getText());
 			}
 			catch(NumberFormatException ife)
 			{
-				errors.append("Error: hamming distance is not a number " + System.getProperty("line.separator"));
+				errors.append("Error: manhattan distance is not a number " + System.getProperty("line.separator"));
 				error =true;
 			}	
 			
-			if(!error && hamDist < 0)
+			if(!error && manDist < 0)
 			{
-				errors.append("Error: hamming distance was less than zero " + System.getProperty("line.separator"));
+				errors.append("Error: manhattan distance was less than zero " + System.getProperty("line.separator"));
 			}
 		}
 		
@@ -1641,7 +1641,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		
 		settings.put(AcaciaConstants.OPT_MAX_STD_DEV_LENGTH, (String) this.SDThreshold.getValue());
 		settings.put(AcaciaConstants.OPT_MIN_AVG_QUALITY, (String) this.qualityThreshold.getValue());
-		settings.put(AcaciaConstants.OPT_MAXIMUM_MANHATTAN_DIST, (String) this.hammingDistance.getText());
+		settings.put(AcaciaConstants.OPT_MAXIMUM_MANHATTAN_DIST, (String) this.manhattanDistance.getText());
 		settings.put(AcaciaConstants.OPT_ERROR_MODEL, (String) this.errorModelSpinner.getValue());
 		
 		//settings.put(Acacia, arg1) for align hamming distance.
@@ -2183,7 +2183,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		this.trimToLength.setText("");
 		this.qualityThreshold.getModel().setValue(AcaciaConstants.DEFAULT_OPT_MIN_AVG_QUALITY);
 		this.spinnerSignificance.getModel().setValue(AcaciaConstants.DEFAULT_OPT_SIGNIFICANCE_LEVEL);
-		this.hammingDistance.setText(AcaciaConstants.DEFAULT_OPT_MAXIMUM_MANHATTAN_DIST);
+		this.manhattanDistance.setText(AcaciaConstants.DEFAULT_OPT_MAXIMUM_MANHATTAN_DIST);
 		this.spinnerRepresentativeSeq.getModel().setValue(AcaciaConstants.DEFAULT_OPT_REPRESENTATIVE_SEQ);
 		this.midSelection.setSelected(this.noMIDs.getModel(), true);
 		

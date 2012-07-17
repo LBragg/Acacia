@@ -411,25 +411,43 @@ public class AcaciaEngine
 				}
 				
 				//trim to first N.
+				//note that if the first N occurs straight after the MID primer, the read will have length zero.
 				int firstN = p.firstOccurrenceOfAmbiguous(); //
-				if(firstN != Pyrotag.NO_N && (trimLength < 0 || trimLength > firstN))
-				{
-					trimLength = firstN;
-				}
-
+				
 				if(trimLength > 0)
 				{
 					p.setTrimToLength(trimLength);
 				}
 				
+				//so why do I set MID primer now?
 				p.setMIDPrimerCombo(midPrimer);
 				 
-				
 				char [] collapsed = p.getCollapsedRead();
 							
 				int minNFlowPos = Integer.parseInt(settings.get(AcaciaConstants.OPT_FILTER_READS_WITH_N_BEFORE_POS)); //default is 350
-				int firstFlowForNs = p.getFlowForCollapsedReadPos(settings.get(AcaciaConstants.OPT_FLOW_KEY), firstN);
+				
+				//firstly, this pertains to first N position, of which there may be zero.
+				int [] firstFlowForNs = null;
+				
+				if(firstN != Pyrotag.NO_N && collapsed.length > 0)
+				{
+						firstFlowForNs = p.getFlowPositionForCollapsedReadPosition(settings.get(AcaciaConstants.OPT_FLOW_KEY), firstN);
+				}
+				
+				//this should take care of the fact that N's can occur at the beginning.
+				if(firstN != Pyrotag.NO_N && (trimLength < 0 || trimLength > firstN))
+				{
+					trimLength = firstN;
+					p.setTrimToLength(trimLength);
+					collapsed = p.getCollapsedRead();
+				}
 
+				/* 1. The collapsed read needs to satisfy the minimum collapsed size
+				 * 2. There are no quality thresholds or the untrimmed average quality is greater than the min quality
+				 * 3. There are no wobbles in hte processed string
+				 * 4. Either there are no N's or the first flow for N's is greater than the min N flow position.
+				 */
+				
 				
 				if(satisfyOverallLength && 
 						collapsed.length >=  minCollapsedSize

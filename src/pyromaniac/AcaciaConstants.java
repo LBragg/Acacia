@@ -236,11 +236,6 @@ public final class AcaciaConstants
 		/** The Constant DEFAULT_OPT_OUTPUT_PREFIX. */
 		public static final String DEFAULT_OPT_OUTPUT_PREFIX;
 
-		/** The Constant ROCHE_10MID_FILE. */
-		public static final String ROCHE_10MID_FILE;
-		
-		/** The Constant ROCHE_5MID_FILE. */
-		public static final String ROCHE_5MID_FILE;
 		
 		/** The Constant PYRONOISE_PROBS_LOCATION. */
 		public static final String PYRONOISE_PROBS_LOCATION;
@@ -334,8 +329,6 @@ public final class AcaciaConstants
 		
 		static
 		{
-			ROCHE_10MID_FILE = null;
-			ROCHE_5MID_FILE = null;
 			PYRONOISE_PROBS_LOCATION = "/data/QuinceProbs.csv";
 			FLOWSIM_PROBS_LOCATION = "/data/maldeEmpiricalDistributions.csv"; 
 			ACACIA_EMP_MODEL_TITANIUM_LOCATION = "/data/titanium_emp_nuc.csv";
@@ -359,9 +352,7 @@ public final class AcaciaConstants
 			STANDARD_DEBUG_NAME = "acacia_standard_debug.txt";
 
 			DEFAULT_FILE_LOC = null;
-			
-			DEFAULT_OPT_MID_LOC = "data" + AcaciaMain.getPlatformSpecificPathDivider()
-			+ "ROCHE_5BASE_ACACIA.mids";
+			DEFAULT_OPT_MID_LOC = null;
 			DEFAULT_OPT_OUTPUT_PREFIX = "acacia_out";
 		}
 		

@@ -314,12 +314,6 @@ public class TagInputPanel extends JPanel implements ActionListener,ListSelectio
 	/** The load mi ds. */
 	private JRadioButton loadMIDs;
 	
-	/** The ten base. */
-	private JRadioButton tenBase;
-	
-	/** The five base. */
-	private JRadioButton fiveBase;
-	
 	/** The SD threshold. */
 	private JSpinner SDThreshold;
 	
@@ -363,10 +357,10 @@ private static final String [] optionsSignificance = new String [] {"0", "-1", "
 			"	A hypothesis test is performed to determine whether differences are due to error alone. A lower value provides more sensitivity, at the cost of specificity. Vice versa for a higher value.";
 	
 	/** The Constant FIVEBASE_MID_FILE. */
-	private static final String FIVEBASE_MID_FILE = "/data/MID_fivebase.csv";
+//	private static final String FIVEBASE_MID_FILE = "/data/MID_fivebase.csv";
 	
 	/** The Constant TENBASE_MID_FILE. */
-	private static final String TENBASE_MID_FILE = "/data/MID_tenbase.csv";
+//	private static final String TENBASE_MID_FILE = "/data/MID_tenbase.csv";
 	
 	/** The Constant HELP_REPRESENTATIVE_TEXT. */
 	private static final String HELP_REPRESENTATIVE_TEXT = "During the de-replication process, a representative read is selected for read 'cluster'. This representative sequence is selected based on its length relative to others in the cluster; the representative sequence may have the minimum, maximum, mode, or median length in the cluster.";
@@ -1263,8 +1257,10 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 	 */
 	private void cleanExit(String string, Exception e) 
 	{
-		// TODO Auto-generated method stub
-		//TODO
+		System.out.println("An exception occurred: " + e.getMessage());
+		e.printStackTrace();
+		System.exit(1); //an error occurred
+		
 	}
 
 	/**
@@ -1311,16 +1307,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		//what options do we want the user to have...
 		//MID file, no MIDS, 
 		midSelection = new ButtonGroup();
-		
-		this.fiveBase = new JRadioButton(OPTION_FIVEBASE);
-		fiveBase.setActionCommand(OPTION_FIVEBASE);
-		fiveBase.addActionListener(this);
-		fiveBase.setBackground(FORM_BACKGROUND_COLOUR);
-		
-		this.tenBase = new JRadioButton(OPTION_TENBASE);
-		tenBase.setActionCommand(OPTION_TENBASE);
-		tenBase.addActionListener(this);	
-		tenBase.setBackground(FORM_BACKGROUND_COLOUR);
+
 		
 		this.loadMIDs = new JRadioButton(OPTION_LOAD_MIDS);
 		loadMIDs.setActionCommand(OPTION_LOAD_MIDS);
@@ -1332,8 +1319,8 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		noMIDs.addActionListener(this);
 		noMIDs.setBackground(FORM_BACKGROUND_COLOUR);
 		
-		midSelection.add(fiveBase);
-		midSelection.add(tenBase);
+		//midSelection.add(fiveBase);
+	//	midSelection.add(tenBase);
 		midSelection.add(loadMIDs);
 		midSelection.add(noMIDs);
 		
@@ -1341,12 +1328,13 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		midsButtonPanel.setLayout(new SpringLayout());
 		midsButtonPanel.setBackground(TagInputPanel.FORM_BACKGROUND_COLOUR);
 		
-		midsButtonPanel.add(fiveBase);
-		midsButtonPanel.add(tenBase);
+		//midsButtonPanel.add(fiveBase);
+	//	midsButtonPanel.add(tenBase);
 		midsButtonPanel.add(loadMIDs);
 		midsButtonPanel.add(noMIDs);
 		
-		SpringUtilities.makeCompactGrid(midsButtonPanel, 2, 2, 0, 0, 5, 5);
+		//changed rows to 1 from 2
+		SpringUtilities.makeCompactGrid(midsButtonPanel, 1, 2, 0, 0, 5, 5);
 		
 		this.midCardPanel = new JPanel();
 		this.midCardPanel.setLayout(new CardLayout());
@@ -1423,7 +1411,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			CardLayout cl = (CardLayout)this.midCardPanel.getLayout();
 			cl.show(this.midCardPanel, TagInputPanel.OPTION_LOAD_MIDS);
 		}
-		else if(e.getActionCommand().equals(OPTION_FIVEBASE) || e.getActionCommand().equals(OPTION_TENBASE) || e.getActionCommand().equals(OPTION_NO_MIDS))
+		else if(e.getActionCommand().equals(OPTION_NO_MIDS))
 		{
 			
 			CardLayout cl = (CardLayout)this.midCardPanel.getLayout();
@@ -1431,15 +1419,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			
 			this.clearMIDSPanel();
 			
-			if(e.getActionCommand().equals(OPTION_FIVEBASE))
-			{
-				this.populateMIDSPanel(FIVEBASE_MID_FILE);
-			}
-			else if (e.getActionCommand().equals(OPTION_TENBASE))
-			{
-				this.populateMIDSPanel(TENBASE_MID_FILE);
-			}
-			else if(e.getActionCommand().equals(OPTION_NO_MIDS))
+			if(e.getActionCommand().equals(OPTION_NO_MIDS))
 			{
 				this.populateMIDSPanel(null);
 				this.midsChoice.setText("");
@@ -1650,9 +1630,17 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		settings.put(AcaciaConstants.OPT_REPRESENTATIVE_SEQ, (String)this.spinnerRepresentativeSeq.getValue());
 		settings.put(AcaciaConstants.OPT_SPLIT_ON_MID, (this.splitOnMID.isSelected())? "TRUE" : "FALSE");
 		
+		if(this.loadMIDs.isSelected())
+		{
+			settings.put(AcaciaConstants.OPT_MID, AcaciaConstants.OPT_LOAD_MIDS);
+		}
+		else if(this.noMIDs.isSelected())
+		{
+			settings.put(AcaciaConstants.OPT_MID, AcaciaConstants.OPT_NO_MID);
+		}
+		
 		LinkedList <MIDPrimerCombo> validTags = this.getSelectedTags();
-		
-		
+				
 		//set up objects required by worker thread.
 				// in case a value is not specified, we use the default
 		
@@ -1664,20 +1652,6 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 
 			System.out.println("User-specified settings: " + key + ": "+ settings.get(key));
 		}
-		
-		if(this.worker != null)
-		{
-			try
-			{
-				logger.removeLogFiles();	
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-				System.exit(1); //TODO better handling
-			}
-		}
-		
 		
 		this.worker = new ErrorCorrectionWorker(defaults, logger,validTags, this);
 		this.cancel.setEnabled(true);

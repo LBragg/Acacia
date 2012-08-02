@@ -98,8 +98,12 @@ public class MIDReader
 			String line = input.readLine();
 			while (line != null) 
 			{
-				String[] columns = line.split(",");
+				if(line.trim().length() == 0)
+				{
+					continue;
+				}
 				
+				String[] columns = line.split(",");
 				if(columns.length != 3)
 				{
 					columns = line.split("\t");

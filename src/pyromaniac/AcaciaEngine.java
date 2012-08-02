@@ -353,6 +353,9 @@ public class AcaciaEngine
 		int minReadLength = (int) (meanLength - (numStdDev * stdDevRead));
 		int maxReadLength = (int) (meanLength + (numStdDev * stdDevRead));	
 		
+		if(minReadLength < 0)
+			minReadLength = 0;
+		
 		logger.writeLog("Accepting reads in the range: " + minReadLength + " - " + maxReadLength, AcaciaLogger.LOG_PROGRESS);
 		
 		int minCollapsedSize = AcaciaConstants.DEFAULT_OPT_TRIM_COLLAPSED;

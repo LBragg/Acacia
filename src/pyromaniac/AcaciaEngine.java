@@ -374,7 +374,9 @@ public class AcaciaEngine
 		LinkedList <MIDPrimerCombo> midsToProcess = midsToUse;
 				
 		if(midsToProcess.size() == 1 && midsToProcess.getFirst() == AcaciaConstants.NO_MID_GROUP)
+		{
 			midsToProcess = new LinkedList <MIDPrimerCombo>(rc.MIDToSequences.keySet());
+		}
 		
 		for(MIDPrimerCombo midPrimer: midsToProcess)
 		{
@@ -662,7 +664,10 @@ public class AcaciaEngine
 					
 					//alignment only allows sequence to belong to one cluster.
 					
-					logger.writeLog("Generating alignment of " + perfectClusters.get(clusterRep).size() + " reads...", AcaciaLogger.LOG_PROGRESS);
+					if(perfectClusters.get(clusterRep).size() > 1)
+					{
+						logger.writeLog("Generating alignment of " + perfectClusters.get(clusterRep).size() + " reads...", AcaciaLogger.LOG_PROGRESS);	
+					}
 					
 					//run the alignment algorithm, it will populate the results collections.
 					SimpleClusterAligner.getInstance().generateAlignments(logger, settings, clusterMembers, clusterRep, outputHandles, 
@@ -671,10 +676,6 @@ public class AcaciaEngine
 					while(mainAlignRes.size() > 0)
 					{
 						Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>> alignRes = mainAlignRes.pop();
-						
-						logger.writeLog("Generating consensus of " + alignRes.getSecond().size() + " reads...", AcaciaLogger.LOG_PROGRESS);
-						
-						
 						///can I pass in the alignment singletons here... to see if they will align using a substitution only aligner? 
 						numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), alignRes.getSecond(), representativeSeqs, fc);
 						
@@ -924,9 +925,6 @@ public class AcaciaEngine
 				HashMap <Pyrotag, Pair <Integer,Character>> flowMapInner = cloneFlowHash(motherFlow);
 
 				//passing true to vary identically makes sure every seequence is processed this time.
-				//TODO: vary identically is deprecated parameter, need to remove eventually.
-				//prior to this, consensus clusters is empty.
-				
 				UnprocessedPyrotagResult failedSecond = ConsensusGeneratorLocalTests.getInstance().generateConsensus(logger, settings, motherAlign, nc, consensusClusters, flowMapInner, fc, false); 
 
 				//last resource is trie.
@@ -1433,7 +1431,7 @@ public class AcaciaEngine
 	 */
 	private String getOutputID(HashMap <String, String> settings, Pyrotag p, boolean withDesc)
 	{
-		StringBuilder id = new StringBuilder();		
+		StringBuilder id = new StringBuilder();	
 		if(! settings.get(AcaciaConstants.OPT_MID).equals(AcaciaConstants.OPT_NO_MID) && p.getMultiplexTag() != AcaciaConstants.NO_MID_GROUP)
 		{
 			id.append(p.getMultiplexTag().getDescriptor());

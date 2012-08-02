@@ -342,8 +342,7 @@ public class SimpleClusterAligner implements ClusterAligner
 		for(Pyrotag p: cluster)
 		{
 			
-			//TODO: fix
-			boolean alignable = ta.align(p, false);		
+			boolean alignable = ta.align(p, verbose);		
 			numAlignments++;
 	
 			if(alignable)

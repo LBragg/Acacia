@@ -151,6 +151,8 @@ public final class AcaciaConstants
 		/** The Constant OPT_MIN_READ_REP_BEFORE_TRUNCATION. */
 		public static final String OPT_MIN_READ_REP_BEFORE_TRUNCATION = "MIN_READ_REP_BEFORE_TRUNCATION";
 		
+		public static final String OPT_MAX_COMPLETE_LINKAGE_DIST = "MAX_COMPLETE_LINKAGE_DISTANCE";
+		
 		
 		//parameter default values
 		/** The Constant DEFAULT_OPT_FASTA. */
@@ -227,6 +229,9 @@ public final class AcaciaConstants
 		public static final String DEFAULT_FILTER_N_BEFORE_POS = "350";
 		
 		
+		
+		public static final String DEFAULT_OPT_MAX_COMPLETE_LINKAGE_DIST = "0.25";
+		
 		/** The Constant DEFAULT_FILE_LOC. */
 		public static final String DEFAULT_FILE_LOC;
 		
@@ -236,7 +241,6 @@ public final class AcaciaConstants
 		/** The Constant DEFAULT_OPT_OUTPUT_PREFIX. */
 		public static final String DEFAULT_OPT_OUTPUT_PREFIX;
 
-		
 		/** The Constant PYRONOISE_PROBS_LOCATION. */
 		public static final String PYRONOISE_PROBS_LOCATION;
 		
@@ -246,11 +250,38 @@ public final class AcaciaConstants
 		/** The Constant FLOWSIM_PROBS_LOCATION. */
 		public static final String ACACIA_EMP_MODEL_TITANIUM_LOCATION;
 		
-		/** The Constant IONTORRENT_316_PROBS_LOCATION */
-		public static final String IONTORRENT_316_PROBS_LOCATION;
+		public static final String IONTORRENT_314_100bp_PROBS_LOCATION;
+		public static final String IONTORRENT_314_100bp_ZERO_COEF;
+		public static final String IONTORRENT_314_100bp_ONE_COEF;
+		public static final String IONTORRENT_314_100bp_OTHER_COEF;
 		
-		/** The Constant IONTORRENT_314_PROBS_LOCATION */
-		public static final String IONTORRENT_314_PROBS_LOCATION;
+		public static final String IONTORRENT_314_200bp_PROBS_LOCATION;
+		public static final String IONTORRENT_314_200bp_ZERO_COEF;
+		public static final String IONTORRENT_314_200bp_ONE_COEF;
+		public static final String IONTORRENT_314_200bp_OTHER_COEF;
+		
+		public static final String IONTORRENT_314_200bpOneTouch_PROBS_LOCATION;
+		public static final String IONTORRENT_314_200bpOneTouch_ZERO_COEF;
+		public static final String IONTORRENT_314_200bpOneTouch_ONE_COEF;
+		public static final String IONTORRENT_314_200bpOneTouch_OTHER_COEF;
+		
+		public static final String IONTORRENT_316_100bp_PROBS_LOCATION;
+		public static final String IONTORRENT_316_100bp_ZERO_COEF;
+		public static final String IONTORRENT_316_100bp_ONE_COEF;
+		public static final String IONTORRENT_316_100bp_OTHER_COEF;
+		
+		public static final String IONTORRENT_316_200bp_PROBS_LOCATION;
+		public static final String IONTORRENT_316_200bp_ZERO_COEF;
+		public static final String IONTORRENT_316_200bp_ONE_COEF;
+		public static final String IONTORRENT_316_200bp_OTHER_COEF;
+		
+		public static final String IONTORRENT_316_200bpOneTouch_PROBS_LOCATION;
+		public static final String IONTORRENT_316_200bpOneTouch_ZERO_COEF;
+		public static final String IONTORRENT_316_200bpOneTouch_ONE_COEF;
+		public static final String IONTORRENT_316_200bpOneTouch_OTHER_COEF;
+		
+		
+		
 		
 		//IO constants
 		/** The Constant STANDARD_OUT_NAME. */
@@ -323,17 +354,55 @@ public final class AcaciaConstants
 		/** These in-built ones are painful, and need to be replaced*/
 		
 		//might even have to be broken down into 316 200bp 316 100bp, 314 100bp 314 200bp
-		public static final String OPT_ACACIA_IONTORRENT316_MODEL = "IT_316";
-		public static final String OPT_ACACIA_IONTORRENT314_MODEL = "IT_314";
+		public static final String OPT_ACACIA_IT_OT_100bp_316_MODEL = "ITO_100bp_316";
+		public static final String OPT_ACACIA_IT_OT_100bp_314_MODEL = "ITO_100bp_314";
+		public static final String OPT_ACACIA_IT_MAN_200bp_316_MODEL = "ITM_200bp_316";
+		public static final String OPT_ACACIA_IT_MAN_200bp_314_MODEL = "ITM_200bp_314";
+		public static final String OPT_ACACIA_IT_OT_200bp_316 = "ITO_200bp_316";
+		public static final String OPT_ACACIA_IT_OT_200bp_314 = "ITO_200bp_314";		
 		
+		public static final String IGNORE_PRIMER = "NoPrimer";
+
+		public static final String OPT_HEX_CLUSTER_ONLY = "CLUSTER_ONLY";
+		public static final String DEFAULT_OPT_HEX_CLUSTER_ONLY = "F";
 		
 		static
 		{
 			PYRONOISE_PROBS_LOCATION = "/data/QuinceProbs.csv";
 			FLOWSIM_PROBS_LOCATION = "/data/maldeEmpiricalDistributions.csv"; 
 			ACACIA_EMP_MODEL_TITANIUM_LOCATION = "/data/titanium_emp_nuc.csv";
-			IONTORRENT_316_PROBS_LOCATION = "/data/iontorrent_316.csv";
-			IONTORRENT_314_PROBS_LOCATION = "/data/iontorrent_314.csv";
+
+			IONTORRENT_314_100bp_PROBS_LOCATION = "/data/100bpOneTouch_314_counts_complete.csv";
+			IONTORRENT_314_100bp_ZERO_COEF = "/data/100bpOneTouch_314_counts_complete_model_zeroes.csv";
+			IONTORRENT_314_100bp_ONE_COEF =  "/data/100bpOneTouch_314_counts_complete_model_ones.csv";
+			IONTORRENT_314_100bp_OTHER_COEF = "/data/100bpOneTouch_314_counts_complete_model_others.csv";
+			
+			IONTORRENT_314_200bp_PROBS_LOCATION = "/data/200bpManual_314_counts_complete.csv";
+			IONTORRENT_314_200bp_ZERO_COEF = "/data/200bpManual_314_counts_complete_model_zeroes.csv";
+			IONTORRENT_314_200bp_ONE_COEF = "/data/200bpManual_314_counts_complete_model_ones.csv";
+			IONTORRENT_314_200bp_OTHER_COEF = "/data/200bpManual_314_counts_complete_model_others.csv";
+			
+			IONTORRENT_314_200bpOneTouch_PROBS_LOCATION = "/data/200bpOneTouch_314_counts_complete.csv";
+			IONTORRENT_314_200bpOneTouch_ZERO_COEF = "/data/200bpOneTouch_314_counts_complete_model_zeroes.csv";
+			IONTORRENT_314_200bpOneTouch_ONE_COEF = "/data/200bpOneTouch_314_counts_complete_model_ones.csv";
+			IONTORRENT_314_200bpOneTouch_OTHER_COEF  = "/data/200bpOneTouch_314_counts_complete_model_others.csv";
+			
+			IONTORRENT_316_100bp_PROBS_LOCATION = "/data/100bpOneTouch_316_counts_complete.csv";
+			IONTORRENT_316_100bp_ZERO_COEF = "/data/100bpOneTouch_316_counts_complete_model_zeroes.csv";
+			IONTORRENT_316_100bp_ONE_COEF= "/data/100bpOneTouch_316_counts_complete_model_ones.csv";
+			IONTORRENT_316_100bp_OTHER_COEF = "/data/100bpOneTouch_316_counts_complete_model_others.csv";
+			
+			IONTORRENT_316_200bp_PROBS_LOCATION = "/data/200bpManual_316_counts_complete.csv";
+			IONTORRENT_316_200bp_ZERO_COEF = "/data/200bpManual_316_counts_complete_model_zeroes.csv";
+			IONTORRENT_316_200bp_ONE_COEF = "/data/200bpManual_316_counts_complete_model_ones.csv";
+			IONTORRENT_316_200bp_OTHER_COEF = "/data/200bpManual_316_counts_complete_model_others.csv";
+			
+			IONTORRENT_316_200bpOneTouch_PROBS_LOCATION = "/data/200bpOneTouch_316_counts_complete.csv";
+			IONTORRENT_316_200bpOneTouch_ZERO_COEF = "/data/200bpOneTouch_316_counts_complete_model_zeroes.csv";
+			IONTORRENT_316_200bpOneTouch_ONE_COEF  = "/data/200bpOneTouch_316_counts_complete_model_ones.csv";
+			IONTORRENT_316_200bpOneTouch_OTHER_COEF = "/data/200bpOneTouch_316_counts_complete_model_others.csv";
+			
+			
 			
 			IUPAC_AMBIGUOUS_MAPPINGS.put('R', new char [] {'A', 'G'});
 			IUPAC_AMBIGUOUS_MAPPINGS.put('Y', new char [] {'C', 'T'});

@@ -112,6 +112,8 @@ public class RLEAlignmentIndelsOnly
 	}
 	
 	
+	
+	
 	/**
 	 * Instantiates a new threaded alignment.
 	 */
@@ -347,7 +349,7 @@ public class RLEAlignmentIndelsOnly
 	 * @param nonConforming the non conforming
 	 * @return the linked list
 	 */
-	public LinkedList<RLEAlignmentIndelsOnly> splitNonConforming(HashSet<HashSet<Pyrotag>> nonConforming) 
+	public LinkedList <RLEAlignmentIndelsOnly> splitNonConforming(HashSet<HashSet<Pyrotag>> nonConforming) 
 	{
 		LinkedList <RLEAlignmentIndelsOnly> newAligns = new LinkedList <RLEAlignmentIndelsOnly>();
 		

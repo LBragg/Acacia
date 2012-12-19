@@ -126,13 +126,17 @@ public class FlowCycler
 	/*
 	public static void main (String [] args)
 	{
-		FlowCycler fc = new FlowCycler(AcaciaConstants.OPT_FLOW_CYCLE_454);
+		AcaciaLogger logger = new AcaciaLogger();
+		FlowCycler fc = new FlowCycler(AcaciaConstants.OPT_FLOW_CYCLE_ION_TORRENT, logger);
 		
 		String madeUp = "TCAGATACGA";
 	
 		try
 		{
-		
+			System.out.println("Cycle number for flow position: " + fc.flowPositionToCycleNumber(86));
+			
+
+			
 			int maxFlowsBetween = fc.minPossibleFlowsBetweenFlowPosXAndCharY(9, 'T');
 			
 			System.out.println("Max flows between position 9 and the next T is : " + maxFlowsBetween);
@@ -157,7 +161,6 @@ public class FlowCycler
 			}			
 			System.out.println("Current base <" + curr + "> at position <" + i + "> maps to flow: " + currFlow[FlowCycler.FLOW_POSITION] + " within cycle position: " + currFlow[FlowCycler.WITHIN_CYCLE_POSITION]);
 		}
-		
 	}
 	*/
 }

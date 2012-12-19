@@ -100,6 +100,7 @@ public class MIDReader
 			{
 				if(line.trim().length() == 0)
 				{
+					line = input.readLine();
 					continue;
 				}
 				

@@ -18,9 +18,13 @@
 
 package pyromaniac.Algorithm;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.HashMap;
 
 import pyromaniac.DataStructures.FlowCycler;
+import pyromaniac.IO.AcaciaLogger;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -38,14 +42,14 @@ public interface OUFrequencyTable
 	/** The Constant GREATER_THAN. */
 	public static final int GREATER_THAN = 2;
 	
-	/** The Constant MAX_PRELOAD. */
-	public static final int MAX_PRELOAD = 10;
-	
-	/** The Constant NO_FLOW. */
-	public static final int NO_FLOW = -1;
+	public static final int INVALID_FLOW = -1;
+
 	
 	public static final String RLE_LENGTH = "RLE_LENGTH";
 	public static final String FLOW_POSITION = "FLOW_POSITION";
+	
+	public static final String SUBTRACT_FOR_LB = "0.51";
+	public static final String ADD_FOR_UB = "0.49";
 	
 
 	/**
@@ -56,19 +60,17 @@ public interface OUFrequencyTable
 	public void loadProbabilities(String probFile);
 	
 	/**
-	 * Calculate probabilities.
-	 *
-	 * @param obsMode the obs mode
-	 * @param flowNumber the flow number
-	 */
-	public void calculateProbabilities(int obsMode, int flowNumber);
-	
-	/**
 	 * Gets the probabilities.
 	 *
 	 * @param obsMode the obs mode
 	 * @param flowNumber the flow number
 	 * @return the probabilities
 	 */
-	public double [] getProbabilities(HashMap <String, Object> factors, FlowCycler cycler);
+	//all of interest to the observer. However helpers will do most of the code.
+	public BigDecimal [] getProbabilities(AcaciaLogger logger, HashMap <String, Object> factors, FlowCycler cycler) throws Exception;
+	public BigDecimal [] estimateProbability(AcaciaLogger logger, HashMap <String, Object> factors, FlowCycler cycler) throws Exception;
+	public BigDecimal [] getEmpiricalProbability(AcaciaLogger logger, HashMap <String, Object> factors, FlowCycler cycler) throws Exception;
+	
+	public int getScale();
+	
 }

@@ -69,6 +69,12 @@ public class BinomialTest extends HypothesisTest
 			
 			//P(X >= x)
 			BinomialDist binomialDistOvercall = new BinomialDist(this.N, errorProbFreqAbove);
+			
+			if(errorProbFreqAbove < 0 || errorProbFreqAbove > 1)
+			{
+				throw new Exception("Obs below: " + this.observationsBelowMode + " Obs above: " + this.observationsAboveMode + " obsMode " + this.observationsAtMode);
+			}
+			
 			double pAbove = binomialDistOvercall.barF(obsErrorFreqAbove);
 			
 				

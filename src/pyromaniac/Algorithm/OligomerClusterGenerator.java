@@ -37,7 +37,7 @@ public class OligomerClusterGenerator extends ClusterGenerator
 {
 		
 		/** The hc. */
-		private HammingClustering hc;
+		private ManhattanClustering hc;
 	
 		/**
 		 * Instantiates a new oligomer clustering.
@@ -63,7 +63,7 @@ public class OligomerClusterGenerator extends ClusterGenerator
 		
 		LinkedList <Pair <String, String>> mergeThisWithThat = new LinkedList <Pair <String, String>>();
 		
-		Integer minimumHamming = Integer.parseInt(settings.get(AcaciaConstants.OPT_MAXIMUM_MANHATTAN_DIST));
+		Integer maximumManhattan = Integer.parseInt(settings.get(AcaciaConstants.OPT_MAXIMUM_MANHATTAN_DIST));
 		
 		int prefixLength = -1;
 		
@@ -198,7 +198,7 @@ public class OligomerClusterGenerator extends ClusterGenerator
 					}
 					
 					//better to merge with the biggest cluster
-					if(dist <= bestDist && dist <= minimumHamming && bestClusterSize < initialClusters.get(curr).size())
+					if(dist <= bestDist && dist <= maximumManhattan && bestClusterSize < initialClusters.get(curr).size())
 					{
 						if(verbose)
 						{
@@ -213,11 +213,11 @@ public class OligomerClusterGenerator extends ClusterGenerator
 				ctr++;
 			}
 			
-			if(bestDist < minimumHamming)
+			if(bestDist < maximumManhattan)
 			{
 				if(verbose)
 				{
-					logger.writeLog("bestDist less than min hamming: " + bestDist, AcaciaLogger.LOG_DEBUG);
+					logger.writeLog("bestDist less than max manhattan: " + bestDist, AcaciaLogger.LOG_DEBUG);
 				}
 				mergeThisWithThat.add(new Pair <String, String> (toProcess, freqSortedList.get(bestMatch)));
 			}
@@ -245,15 +245,15 @@ public class OligomerClusterGenerator extends ClusterGenerator
 		}
 		
 		//remembers the hexamer position, and the prefix length. Maybe it was for parallelisation?
-		HammingClustering hc = new HammingClustering (hexToPos, index,prefixLength); //why do I keep this around? If I have to do multiple clusterings or something?
+		ManhattanClustering hc = new ManhattanClustering (hexToPos, index,prefixLength); //why do I keep this around? If I have to do multiple clusterings or something?
 		this.hc = hc;
 
 	}
 	
 	/**
-	 * The Class HammingClustering.
+	 * The Class ManhattanClustering.
 	 */
-	private class HammingClustering
+	private class ManhattanClustering
 	{
 		
 		/**
@@ -322,13 +322,13 @@ public class OligomerClusterGenerator extends ClusterGenerator
 		HashMap <String, Integer> hexes;
 		
 		/**
-		 * Instantiates a new hamming clustering.
+		 * Instantiates a new manhattan clustering.
 		 *
 		 * @param hexes the hexes
 		 * @param lastIndex the last index
 		 * @param subStringLength the sub string length
 		 */
-		public HammingClustering(HashMap <String, Integer> hexes, MutableInteger lastIndex, int subStringLength)
+		public ManhattanClustering(HashMap <String, Integer> hexes, MutableInteger lastIndex, int subStringLength)
 		{
 			this.hexes = hexes;
 			this.lastIndex = lastIndex;

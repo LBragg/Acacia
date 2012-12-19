@@ -15,7 +15,7 @@
                    <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
                    <attribute name="Rsrc-Main-Class" value="pyromaniac.AcaciaMain"/>
                    <attribute name="Class-Path" value="."/>
-                <attribute name="Rsrc-Class-Path" value="./ biojava.jar biojava-1.7.1-all.jar classmexer-0_03.zip colt.jar optimization.jar Blas.jar tcode.jar jfreechart-1.0.10.jar jcommon-1.0.13.jar language-1.6.7.jar event-1.6.5.jar logger-1.6.4.jar interpreter-1.6.8.jar ssj.jar commons-cli-1.2.jar commons-math-2.1.jar"/>
+                <attribute name="Rsrc-Class-Path" value="./ biojava.jar biojava-1.7.1-all.jar classmexer-0_03.zip colt.jar optimization.jar Blas.jar tcode.jar jfreechart-1.0.10.jar jcommon-1.0.13.jar language-1.6.7.jar event-1.6.5.jar logger-1.6.4.jar interpreter-1.6.8.jar ssj.jar commons-cli-1.2.jar hac.jar commons-math-2.1.jar"/>
             </manifest>
             <zipfileset src="jar-in-jar-loader.zip"/>
             <fileset dir="E:/GitRepo/AcaciaEclipse/Acacia/bin"/>
@@ -34,6 +34,7 @@
             <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="interpreter-1.6.8.jar"/>
             <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\ssj-20100908\ssj\lib" includes="ssj.jar"/>
             <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\commons-cli-1.2" includes="commons-cli-1.2.jar"/>
+    		<zipfileset dir="E:\Work_Documents\Eclipse\sape-hac-8b2a326" includes="hac.jar"/>
             <zipfileset dir="E:\Work_Documents\Eclipse\workspace\3rd_party\commons-math-2.1\commons-math-2.1" includes="commons-math-2.1.jar"/>
         </jar>
         <propertyfile file="src/data/build_info.properties">

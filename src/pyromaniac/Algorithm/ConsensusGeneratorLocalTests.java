@@ -18,6 +18,8 @@
 
 package pyromaniac.Algorithm;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,7 +41,6 @@ import pyromaniac.IO.AcaciaLogger;
  */
 public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 {
-
 	/* (non-Javadoc)
 	 * @see pyromaniac.Algorithm.ConsensusGenerator#generateConsensus(pyromaniac.IO.AcaciaLogger, java.util.HashMap, pyromaniac.Algorithm.ThreadedAlignment, java.util.LinkedList, java.util.HashMap, boolean)
 	 */
@@ -59,38 +60,14 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		if(tagsToProcess.size() == 1)
 		{	
 			consensusClusters.add(tagsToProcess);
-			
-			
 			return null;
 		}
 
-		
+		OUFrequencyTable table = AcaciaEngine.getErrorModel(logger, settings);
 		
 		//go through corrected branches here!!!
 		double thresholdPValue = AcaciaEngine.getEngine().parseSignificanceThreshold(settings.get(AcaciaConstants.OPT_SIGNIFICANCE_LEVEL));
-		OUFrequencyTable table = null;
-		
-		if(settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL))
-		{ 
-			table = new MaldeOUCallFrequencyTable(AcaciaConstants.FLOWSIM_PROBS_LOCATION);
-		}
-		else if (settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_ACACIA_TITANIUM_ERROR_MODEL))
-		{
-			//this model is still be evaluated
-			table = new MaldeOUCallFrequencyTable(AcaciaConstants.ACACIA_EMP_MODEL_TITANIUM_LOCATION);
-		}
-		else if(settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_ACACIA_IONTORRENT316_MODEL))
-		{
-			table = new IonTorrentOUCallFrequency(AcaciaConstants.IONTORRENT_316_PROBS_LOCATION);
-		}
-		else if(settings.get(AcaciaConstants.OPT_ERROR_MODEL).equals(AcaciaConstants.OPT_ACACIA_IONTORRENT314_MODEL))
-		{
-			table = new IonTorrentOUCallFrequency(AcaciaConstants.IONTORRENT_314_PROBS_LOCATION);
-		}
-		else //quince
-		{
-			table = new pyromaniac.Algorithm.QuinceFrequencyTable(AcaciaConstants.PYRONOISE_PROBS_LOCATION);
-		}
+
 
 		int alignmentCounter =  0;
 		Iterator <AlignmentColumn> it = ta.iterator();	
@@ -585,9 +562,6 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		) throws Exception
 			{
 		
-		verbose = false;
-		
-		//
 		HashMap <Integer, HashSet <Pyrotag>> observationsAtPosition = ac.getHPLengthToTags(tagsInCluster);
 
 			
@@ -687,16 +661,23 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		if(verbose)
 		{
 			logger.writeLog("About to do test: mode is " + mode + ", obs below: " + obsBelow + " obsAbove: " + obsAbove + " obsAt: " + modeFreq, AcaciaLogger.LOG_DEBUG);
+			
+			logger.writeLog("Flow position to number of reads: ", AcaciaLogger.LOG_DEBUG);
+			
+			for(int position: flowToNumReads.keySet())
+			{
+				logger.writeLog("There are " + flowToNumReads.get(position) + " reads with flow position: " + position, AcaciaLogger.LOG_DEBUG);
+			}
 
 		}
 
 		boolean verbose2 = verbose; //too much information from run test for significance
 		
+
 		//perform test for significance, get result
-		HypothesisTest res = this._runTestForSignificance(logger, mode, obsBelow,obsAbove, modeFreq, 
+			HypothesisTest res = this._runTestForSignificance(logger, mode, obsBelow,obsAbove, modeFreq, 
 				flowToNumReads, table, significanceLevel, cycler, verbose2);
 
-		
 		
 		//to handle introduced deletions for very small clusters.
 		//overrides the result of the hypothesis test
@@ -723,6 +704,13 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 
 		}
 	
+		if(verbose && (res.isSignificantAbove() || res.isSignificantBelow()))
+		{
+			logger.writeLog("Nucleotide: " + ac.getValue(), AcaciaLogger.LOG_DEBUG);
+			logger.writeLog("Mode is " + mode + " with freq: " + modeFreq, AcaciaLogger.LOG_DEBUG);
+			logger.writeLog("Above: " + obsAbove + ", Below: " + obsBelow + " at ", AcaciaLogger.LOG_DEBUG);
+			
+		}
 		
 		ArrayList <Pyrotag> obsAboveMode = new ArrayList <Pyrotag>();
 		ArrayList <Pyrotag> obsBelowMode = new ArrayList <Pyrotag>();
@@ -892,7 +880,8 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 			boolean verbose) throws Exception
 			{
 
-		double [] weightedP = new double [3];
+		BigDecimal [] weightedP = {new BigDecimal(0), new BigDecimal(0),new BigDecimal(0)};
+		
 		double flowSum = 0.0;
 		double numSeqs = 0.0;
 
@@ -903,32 +892,87 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		HashMap <String, Object> probFactors = new HashMap <String, Object>();
 		probFactors.put(OUFrequencyTable.RLE_LENGTH, modeVal);
 
+		double weightedSum = 0;
+
+		StringBuilder sb = new StringBuilder(); //for DEBUG
 
 		for(Integer flowPos: flowPosToFreq.keySet())
 		{
 			//replace this every time, to save on hashmap construction
 			probFactors.put(OUFrequencyTable.FLOW_POSITION, flowPos); 
 
-			double freq = flowPosToFreq.get(flowPos);
-			double seqProp =  freq / (double)(obsBelow + obsAt + obsAbove);
 
-			flowSum+= (freq * flowPos);
-			numSeqs += freq;
+			
+			BigDecimal freq = new BigDecimal(flowPosToFreq.get(flowPos)); 
+			
 
-			double [] oldP = table.getProbabilities(probFactors, cycler);
+			//double check this behaviour, but need to round to a certain number of dec. places
+			
+			BigDecimal sumObs = new BigDecimal(obsBelow + obsAt + obsAbove);
+			BigDecimal prop = freq.divide(sumObs,table.getScale(), BigDecimal.ROUND_HALF_UP);
+			
+			
+			sb.append("Flowpos: " + flowPos + " freq " + freq + " seq proportion: " + prop.doubleValue() + "\n");
+			
+			flowSum += (freq.doubleValue() * flowPos);
+			numSeqs += freq.doubleValue();
 
+			BigDecimal [] oldP = table.getProbabilities(logger, probFactors, cycler);
+			
+			for(BigDecimal bd: oldP)
+			{
+				sb.append(bd + "\n");
+			}
+		
 			//double [] oldP = table.getProbabilities(modeVal, flowPos);		
-			double [] rearrangedP = new double [] {oldP[OUFrequencyTable.EQUAL_TO], 
+			BigDecimal [] rearrangedP = new BigDecimal [] {oldP[OUFrequencyTable.EQUAL_TO], 
 					oldP[OUFrequencyTable.LESS_THAN], oldP[OUFrequencyTable.GREATER_THAN]};		
 
 			// It is weighted because sequences will be at different
 			// positions in the flow. Therefore... the probabilities need to be weighted by the proportion of reads which are
 			// at that flow segment.
+			
+			BigDecimal sumOld = new BigDecimal("0").setScale(table.getScale(), BigDecimal.ROUND_HALF_UP);
+			
 			for(int i= 0; i < weightedP.length; i++)
 			{
-				weightedP[i] += (seqProp * rearrangedP[i]);
+				sumOld = sumOld.add(rearrangedP[i]);
+				sb.append("Rearrangedp [" + i + "] = " + rearrangedP[i] + "\n");
+				weightedP[i] =  weightedP[i].add(prop.multiply(rearrangedP[i]).setScale(table.getScale(), BigDecimal.ROUND_HALF_UP));
+				sb.append("Weighted [" + i + "] = " + weightedP[i].doubleValue() + "\n");
 			}
+			
+			sb.append("Sum old: " +  sumOld + "\n");
 		}
+		
+		BigDecimal sum = new BigDecimal("0");
+		for(int i = 0;i < weightedP.length; i++)
+		{
+			sum = sum.add(weightedP[i]);
+		}
+	
+		if(! sum.equals(new BigDecimal("1").setScale(table.getScale(), BigDecimal.ROUND_HALF_UP)))
+		{
+			weightedP[0] = weightedP[0].divide(sum, table.getScale(), BigDecimal.ROUND_HALF_UP);
+			weightedP[1] = weightedP[1].divide(sum, table.getScale(), BigDecimal.ROUND_HALF_UP);
+			weightedP[2] = weightedP[2].divide(sum, table.getScale(), BigDecimal.ROUND_HALF_UP);
+		}	
+		
+		
+		double [] preciseWeighted = new double [3];
+		for(int i = 0; i < preciseWeighted.length; i++)
+		{
+			preciseWeighted[i] = weightedP[i].doubleValue();
+			
+			if(preciseWeighted[i] < 0)
+			{
+				System.out.println(sb);
+				throw new Exception("Weighted value was less than zero: " + preciseWeighted[i] + " , big decimal : " + weightedP[i]);
+				
+			}
+			
+		}
+			
 
 		probFactors = null; //clean up
 
@@ -937,9 +981,11 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		HypothesisTest ht = null;
 		int minSize = 100;
 
+		
+		//TODO: fix this
 		for(int i = 0; i < weightedP.length; i++)
 		{
-			int expected = (int) weightedP[i] * (obsAbove + obsBelow + obsAt);
+			int expected = (int) (weightedP[i].doubleValue() * (obsAbove + obsBelow + obsAt));
 
 			if(expected < minSize)
 			{
@@ -948,18 +994,40 @@ public class ConsensusGeneratorLocalTests implements ConsensusGenerator
 		}
 
 		//only way we could be doing 'worse' is if the binomial is less sensitive. 
-
 		if(minSize < 5) //minimum size in any category is less than the golden number
-		{					
-			ht = new BinomialTest(obsAbove, obsBelow, obsAt, modeVal, weightedP, thresholdPValue, avgFlow, logger, verbose);
+		{				
+			if(verbose)
+				System.out.println("Running binomial");
+			ht = new BinomialTest(obsAbove, obsBelow, obsAt, modeVal, preciseWeighted, thresholdPValue, avgFlow, logger, verbose);
 		}
 		else
 		{
+			if(verbose)
+				System.out.println("Running multinomial");
 			//	One-sided multinomial test of significance
-			ht = new MultinomialOneSidedTest(obsAbove, obsBelow, obsAt, modeVal, weightedP, thresholdPValue, avgFlow, logger, verbose);
+			ht = new MultinomialOneSidedTest(obsAbove, obsBelow, obsAt, modeVal, preciseWeighted, thresholdPValue, avgFlow, logger, verbose);
 		}
 
-		ht.runTest();
+		try
+		{
+			ht.runTest();
+		}
+		catch(Exception e)
+		{
+			double localsum = 0;
+			for(double prob: preciseWeighted)
+			{
+				System.out.println("Prob: " + prob);
+				localsum+= prob;
+			}
+			
+			System.out.println("Sum was " + localsum);
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+			
+		}
+		
+		
 		return ht;
 	}
 	

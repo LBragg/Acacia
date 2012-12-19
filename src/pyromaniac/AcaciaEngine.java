@@ -49,10 +49,12 @@ import pyromaniac.IO.StandardOutputHandle;
 import pyromaniac.IO.TagImporter;
 import pyromaniac.Algorithm.BinomialTest;
 import pyromaniac.Algorithm.ClusterGenerator;
+import pyromaniac.Algorithm.CoarseAlignSplitter;
 import pyromaniac.Algorithm.ConsensusGeneratorLocalTests;
 import pyromaniac.Algorithm.ConsensusGeneratorLocalTests.UnprocessedPyrotagResult;
 import pyromaniac.Algorithm.HypothesisTest;
-import pyromaniac.Algorithm.MaldeOUCallFrequencyTable;
+import pyromaniac.Algorithm.IonTorrentOUCallFrequencyTable;
+import pyromaniac.Algorithm.BalzerOUCallFrequencyTable;
 import pyromaniac.Algorithm.MultinomialOneSidedTest;
 import pyromaniac.Algorithm.OUFrequencyTable;
 import pyromaniac.Algorithm.OligomerClusterGenerator;
@@ -134,7 +136,9 @@ public class AcaciaEngine
 				AcaciaConstants.OPT_MIN_FLOW_TRUNCATION, //paired with the percentage of reads covering blah
 				AcaciaConstants.OPT_FILTER_READS_WITH_N_BEFORE_POS,
 				AcaciaConstants.OPT_SIGNIFICANT_WHEN_TWO,
-				AcaciaConstants.OPT_FLOW_CYCLE_STRING
+				AcaciaConstants.OPT_FLOW_CYCLE_STRING,
+				AcaciaConstants.OPT_MAX_COMPLETE_LINKAGE_DIST,
+				AcaciaConstants.OPT_HEX_CLUSTER_ONLY
 		};
 		
 		String [] tmpSettingValues = 
@@ -163,7 +167,9 @@ public class AcaciaEngine
 				AcaciaConstants.DEFAULT_OPT_MIN_FLOW_TRUNCATION,
 				AcaciaConstants.DEFAULT_FILTER_N_BEFORE_POS,
 				AcaciaConstants.DEFAULT_OPT_SIGNIFICANT_WHEN_TWO,
-				AcaciaConstants.DEFAULT_OPT_FLOW_CYCLE_STRING
+				AcaciaConstants.DEFAULT_OPT_FLOW_CYCLE_STRING,
+				AcaciaConstants.DEFAULT_OPT_MAX_COMPLETE_LINKAGE_DIST,
+				AcaciaConstants.DEFAULT_OPT_HEX_CLUSTER_ONLY
 		};
 		
 		settingKeys = tmpSettingKeys;
@@ -190,7 +196,7 @@ public class AcaciaEngine
 	 * @param toClone the flow hash to deep clone
 	 * @return a deep-cloned copy of the toClone hashmap
 	 */
-	private HashMap <Pyrotag, Pair <Integer, Character>> cloneFlowHash(HashMap <Pyrotag, Pair <Integer, Character>> toClone)
+	public HashMap <Pyrotag, Pair <Integer, Character>> cloneFlowHash(HashMap <Pyrotag, Pair <Integer, Character>> toClone)
 	{
 		HashMap <Pyrotag, Pair <Integer, Character>> clone = new HashMap <Pyrotag, Pair <Integer, Character>>();
 		
@@ -337,10 +343,20 @@ public class AcaciaEngine
 	{
 		HashMap <String, LinkedList <Pyrotag>> perfectClusters = new HashMap <String, LinkedList <Pyrotag>>();
 		
+		
+		if(rc.getNumValidMIDS() == 0)
+		{
+			outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Number of reads with invalid MID: " + rc.getNumInvalidMIDS() + System.getProperty("line.separator"));
+			logger.writeLog("There were no valid MIDS in the file!", AcaciaLogger.LOG_ERROR);
+			logger.writeLog("There were no valid MIDS in the file!", AcaciaLogger.LOG_PROGRESS);
+			return null;
+		}
+		
+		
 		double meanLength = rc.getMeanReadLengthForMID(midsToUse);
 		double stdDevRead = rc.calculateLengthStandardDevForRead(midsToUse);
 		double stdDevCollapsed = rc.calculateCollapsedLengthStandardDevForRead(midsToUse);
-		
+				
 		
 		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Mean length (before filtering): " + meanLength + System.getProperty("line.separator"));
 		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Length SD (before filtering):  " + stdDevRead + System.getProperty("line.separator"));
@@ -651,59 +667,110 @@ public class AcaciaEngine
 				clusterer.runClustering();
 				
 				logger.writeLog("There are " + perfectClusters.size() + " after hexamer recruiting", AcaciaLogger.LOG_PROGRESS);
-				logger.writeLog("Performing error correction on clusters...", AcaciaLogger.LOG_PROGRESS);
+
 				//at this point, do not care about the relationship between clusters...
 				
-				for(String clusterRep: perfectClusters.keySet())
-				{	
-					LinkedList <Pyrotag> clusterMembers = perfectClusters.get(clusterRep);
-					
-					//alignment for the cluster				
-					ArrayDeque <Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>>>  mainAlignRes = 
-						new ArrayDeque <Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>>>();
-
-					//maybe this adds the same sequence twice to singletons?
-					LinkedList <Pyrotag> singletons = new LinkedList <Pyrotag>();
-					
-					//alignment only allows sequence to belong to one cluster.
-					
-					if(perfectClusters.get(clusterRep).size() > 1)
+				//TODO: temporary fix, 
+				
+				String hexClustOnly = settings.get(AcaciaConstants.OPT_HEX_CLUSTER_ONLY).toUpperCase();
+				
+				boolean outputClusterMemberships = (hexClustOnly.equals("T") || hexClustOnly.equals("TRUE"))? true : false; 
+				int clusterID = 0;
+				
+				//do we need all those other output files... how do I never open them...
+				if(outputClusterMemberships)
+				{
+					logger.writeLog("Creating fasta files per sequence cluster...", AcaciaLogger.LOG_PROGRESS);
+					for(String clusterRep: perfectClusters.keySet())
 					{
-						logger.writeLog("Generating alignment of " + perfectClusters.get(clusterRep).size() + " reads...", AcaciaLogger.LOG_PROGRESS);	
-					}
-					
-					//run the alignment algorithm, it will populate the results collections.
-					SimpleClusterAligner.getInstance().generateAlignments(logger, settings, clusterMembers, clusterRep, outputHandles, 
-							representativeSeqs, mainAlignRes, singletons);
-
-					while(mainAlignRes.size() > 0)
-					{
-						Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>> alignRes = mainAlignRes.pop();
-						///can I pass in the alignment singletons here... to see if they will align using a substitution only aligner? 
-						numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), alignRes.getSecond(), representativeSeqs, fc);
+						String outDir = settings.get(AcaciaConstants.OPT_OUTPUT_DIR);
+						String outputPrefix = settings.get(AcaciaConstants.OPT_OUTPUT_PREFIX);
+						String midStr = (m != null)? m.getDescriptor() : "mid_unspecified";
+						String hexOut = outDir + getPlatformSpecificPathDivider() + outputPrefix + "_" + midStr + "_hexamer_cluster_" + clusterID +".fasta";
+						BufferedWriter hexOutBuff = new BufferedWriter (new FileWriter (new File(hexOut), false));
 						
-						//numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), alignRes.getSecond(), representativeSeqs, singletons);
-						//this above should remove any singletons that could be recruited?
+						logger.writeLog("Outputting cluster of size: " + perfectClusters.get(clusterRep).size(), AcaciaLogger.LOG_PROGRESS);
+						
+						
+						for(Pyrotag p: perfectClusters.get(clusterRep))
+						{
+							outputSequence(settings, hexOutBuff, new String(p.getProcessedString()), p);
+						}
+						hexOutBuff.close();
+						
+						clusterID++;
 					}
-					
-					//ideally here... we have a set of consensus sequences, and a set of singletons...				
-					for(Pyrotag solo: singletons)
-					{
-	
-						this.processSingleton(solo, settings, outputHandles, representativeSeqs, logger);
-					}
-					
-					clusterMembers = null;
-					mainAlignRes = null;
-					singletons = null;
-					
 				}
+				else
+				{
+					logger.writeLog("Performing error correction on clusters...", AcaciaLogger.LOG_PROGRESS);
+					for(String clusterRep: perfectClusters.keySet())
+					{	
+						LinkedList <Pyrotag> clusterMembers = perfectClusters.get(clusterRep);
 
-				perfectClusters = null; //clean that up.
+						//alignment for the cluster				
+						ArrayDeque <Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>>>  mainAlignRes = 
+							new ArrayDeque <Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>>>();
+
+						//maybe this adds the same sequence twice to singletons?
+						LinkedList <Pyrotag> singletons = new LinkedList <Pyrotag>();
+
+						//alignment only allows sequence to belong to one cluster.
+
+						if(perfectClusters.get(clusterRep).size() > 1)
+						{
+							logger.writeLog("Processing cluster of " + perfectClusters.get(clusterRep).size() + " reads...", AcaciaLogger.LOG_PROGRESS);	
+						}
+
+						//run the alignment algorithm, it will populate the results collections.
+						SimpleClusterAligner.getInstance().generateAlignments(logger, settings, clusterMembers, clusterRep, outputHandles, 
+								representativeSeqs, mainAlignRes, singletons);
+
+						while(mainAlignRes.size() > 0)
+						{
+							Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>> alignRes = mainAlignRes.pop();
+							///can I pass in the alignment singletons here... to see if they will align using a substitution only aligner? 
+
+							
+							if(alignRes.getSecond().size() > 10000)
+							{
+								logger.writeLog("Assessing whether large cluster of " + alignRes.getSecond().size() + " reads requires further partitioning...", AcaciaLogger.LOG_PROGRESS);	
+							}
+							
+							//don't want to do the full tests when there are obvious, highly significant deviations.
+							HashSet <HashSet <Pyrotag>> splitFurther = CoarseAlignSplitter.getInstance().scanAlignmentForObviousDeviations(logger, settings, outputHandles, alignRes, fc);
+
+							//System.out.println("After hierarchical clustering, we have " + splitFurther.size() + " sub-clusters");
+							LinkedList <RLEAlignmentIndelsOnly> result = alignRes.getFirst().splitNonConforming(splitFurther);
+
+							for(RLEAlignmentIndelsOnly subalign: result)
+							{
+								HashMap <Pyrotag, Pair <Integer,Character>> flowMapInner = cloneFlowHash(alignRes.getSecond());
+
+								numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, subalign, flowMapInner, representativeSeqs, fc);
+							}
+
+						}
+
+						//ideally here... we have a set of consensus sequences, and a set of singletons...				
+						for(Pyrotag solo: singletons)
+						{
+							this.processSingleton(solo, settings, outputHandles, representativeSeqs, logger);
+						}
+
+						clusterMembers = null;
+						mainAlignRes = null;
+						singletons = null;
+
+					}
+
+
 				logger.writeLog("Outputting final statistics...", AcaciaLogger.LOG_PROGRESS);
 				
 				//do we want to keep all the representative seqs in memory... just for this? Could probably just store the ID for the pyrotag.
 				outputFinalStatsAndHist(numSeqsCorrected,settings,logger,outputHandles,representativeSeqs, version);
+				}
+				perfectClusters = null; //clean that up.
 			}
 		}
 		catch(OutOfMemoryError error)
@@ -716,6 +783,8 @@ public class AcaciaEngine
 			logger.writeLog("Finished: " + Thread.currentThread().getName(), AcaciaLogger.LOG_PROGRESS);
 		}
 	}   
+
+
 
 	/**
 	 * Outputs the consensus sequences for all reads in the ThreadedAlignment.
@@ -966,6 +1035,65 @@ public class AcaciaEngine
 		return numCorrected;
 	}
 
+	public static OUFrequencyTable getErrorModel(AcaciaLogger logger, HashMap <String, String> settings) throws Exception
+	{		
+		OUFrequencyTable table = null;
+		
+		String errModel = settings.get(AcaciaConstants.OPT_ERROR_MODEL); 
+		
+		if(errModel.equals(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL))
+		{ 
+			table = new BalzerOUCallFrequencyTable(AcaciaConstants.FLOWSIM_PROBS_LOCATION);
+		}
+		else if (errModel.equals(AcaciaConstants.OPT_ACACIA_TITANIUM_ERROR_MODEL))
+		{
+			//this model is still be evaluated
+			table = new BalzerOUCallFrequencyTable(AcaciaConstants.ACACIA_EMP_MODEL_TITANIUM_LOCATION);
+		}
+		else if(errModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_100bp_314_MODEL))
+		{
+			table = new IonTorrentOUCallFrequencyTable(settings, logger, AcaciaConstants.IONTORRENT_314_100bp_PROBS_LOCATION, 
+					AcaciaConstants.IONTORRENT_314_100bp_ZERO_COEF, AcaciaConstants.IONTORRENT_314_100bp_ONE_COEF, 
+					AcaciaConstants.IONTORRENT_314_100bp_OTHER_COEF);
+		}
+		else if(errModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_100bp_316_MODEL))
+		{
+			table = new IonTorrentOUCallFrequencyTable(settings, logger, AcaciaConstants.IONTORRENT_316_100bp_PROBS_LOCATION, 
+					AcaciaConstants.IONTORRENT_316_100bp_ZERO_COEF, AcaciaConstants.IONTORRENT_316_100bp_ONE_COEF,
+					AcaciaConstants.IONTORRENT_316_100bp_OTHER_COEF);
+		}
+		else if (errModel.equals(AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_314_MODEL))
+		{
+			table = new IonTorrentOUCallFrequencyTable(settings, logger, AcaciaConstants.IONTORRENT_314_200bp_PROBS_LOCATION, 
+					AcaciaConstants.IONTORRENT_314_200bp_ZERO_COEF, AcaciaConstants.IONTORRENT_314_200bp_ONE_COEF, 
+					AcaciaConstants.IONTORRENT_314_200bp_OTHER_COEF);
+		}
+		else if(errModel.equals(AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_316_MODEL))
+		{
+			table = new IonTorrentOUCallFrequencyTable(settings, logger, AcaciaConstants.IONTORRENT_316_200bp_PROBS_LOCATION,
+					AcaciaConstants.IONTORRENT_316_200bp_ZERO_COEF, AcaciaConstants.IONTORRENT_316_200bp_ONE_COEF, 
+					AcaciaConstants.IONTORRENT_316_200bp_OTHER_COEF);
+		}
+		else if(errModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_314))
+		{
+			table = new IonTorrentOUCallFrequencyTable(settings, logger, AcaciaConstants.IONTORRENT_314_200bpOneTouch_PROBS_LOCATION, 
+					AcaciaConstants.IONTORRENT_314_200bpOneTouch_ZERO_COEF, AcaciaConstants.IONTORRENT_314_200bpOneTouch_ONE_COEF, 
+					AcaciaConstants.IONTORRENT_314_200bpOneTouch_OTHER_COEF);
+		}
+		else if (errModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_316))
+		{
+			table = new IonTorrentOUCallFrequencyTable(settings, logger, AcaciaConstants.IONTORRENT_316_200bpOneTouch_PROBS_LOCATION, 
+					AcaciaConstants.IONTORRENT_316_200bpOneTouch_ZERO_COEF, AcaciaConstants.IONTORRENT_316_200bpOneTouch_ONE_COEF, 
+					AcaciaConstants.IONTORRENT_316_200bpOneTouch_OTHER_COEF);
+		}
+		else //quince
+		{
+			table = new pyromaniac.Algorithm.QuinceOUFrequencyTable(AcaciaConstants.PYRONOISE_PROBS_LOCATION);
+		}
+		return table;
+	}
+		
+	
 	//inspect the file, characterise the reads.
 	/**
 	 * Prepare file for clustering.
@@ -999,6 +1127,7 @@ public class AcaciaEngine
 		//loading only sequences which have valid MID.
 		
 		int invalidMID = 0;
+		int validMID = 0;
 		
 		while (p != null) 
 		{
@@ -1017,6 +1146,8 @@ public class AcaciaEngine
 				
 				continue;
 			}
+			
+			validMID++;
 			
 	//		System.out.println("Set MID matching");
 			p.setMIDPrimerCombo(matching); //may already be initialised?
@@ -1059,7 +1190,7 @@ public class AcaciaEngine
 			p = importer.getPyrotagAtIndex(fileIndex);
 		}	
 		
-		RunCharacterisation rc = new RunCharacterisation(MIDToSequences, MIDseqLength, MIDcollapsedSeqLength, MIDqualities, invalidMID);
+		RunCharacterisation rc = new RunCharacterisation(MIDToSequences, MIDseqLength, MIDcollapsedSeqLength, MIDqualities, validMID, invalidMID);
 		return rc;
 	}
 	
@@ -1083,6 +1214,9 @@ public class AcaciaEngine
 		
 		/** The invalid mids. */
 		int invalidMIDS;
+
+		/** The valid mids */
+		int validMIDs;
 		
 		
 		/**
@@ -1093,17 +1227,19 @@ public class AcaciaEngine
 		 * @param MIDcollapsedSeqLength the mI dcollapsed seq length
 		 * @param MIDqualities the mI dqualities
 		 * @param invalidMIDS the invalid mids
+		 * @param invalidMID 
 		 */
 		public RunCharacterisation(HashMap <MIDPrimerCombo, LinkedList <Pyrotag>> MIDToSequences, 
 				HashMap <MIDPrimerCombo, Integer> MIDSeqLength,
 				HashMap <MIDPrimerCombo, Integer> MIDcollapsedSeqLength, 
-				HashMap <MIDPrimerCombo, Double> MIDqualities, int invalidMIDS)
+				HashMap <MIDPrimerCombo, Double> MIDqualities, int validMIDs, int invalidMIDS)
 		{
 			this.MIDToSequences = MIDToSequences;
 			this.MIDseqLength = MIDSeqLength;
 			this.MIDcollapsedSeqLength = MIDcollapsedSeqLength;
 			this.MIDqualities = MIDqualities;
 			this.invalidMIDS = invalidMIDS;
+			this.validMIDs = validMIDs;
 		}
 		
 		/**
@@ -1114,6 +1250,11 @@ public class AcaciaEngine
 		public int getNumInvalidMIDS()
 		{
 			return this.invalidMIDS;
+		}
+		
+		public int getNumValidMIDS()
+		{
+			return this.validMIDs;
 		}
 		
 		/**

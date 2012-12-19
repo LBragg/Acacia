@@ -683,9 +683,32 @@ public class AcaciaMain
 
 		String errorModel = settings.get(AcaciaConstants.OPT_ERROR_MODEL);
 		
-		if(! (errorModel.equals(AcaciaConstants.OPT_ACACIA_TITANIUM_ERROR_MODEL) || errorModel.equals(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL) || errorModel.equals(AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL)))
+		
+		if(! 
+				(errorModel.equals(AcaciaConstants.OPT_ACACIA_TITANIUM_ERROR_MODEL) 
+						|| errorModel.equals(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL) || 
+						errorModel.equals(AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL)  ||
+						errorModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_100bp_316_MODEL) ||
+						errorModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_100bp_314_MODEL) ||
+						errorModel.equals(AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_316_MODEL) ||
+						errorModel.equals(AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_314_MODEL)||
+						errorModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_316)||
+						errorModel.equals(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_314)
+				
+				))
 		{
-			throw new Exception("Incorrect error model specified, must be one of: ");
+			StringBuilder sb = new StringBuilder();
+			sb.append(AcaciaConstants.OPT_ACACIA_TITANIUM_ERROR_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_ACACIA_IT_OT_100bp_316_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_ACACIA_IT_OT_100bp_314_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_316_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_314_MODEL + "\n");
+			sb.append(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_316 + "\n");
+			sb.append(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_314 + "\n");
+			
+			throw new Exception("Incorrect error model specified, must be one of: \n " + sb.toString());
 		}
 		
 		String validNucs = "ATGC";

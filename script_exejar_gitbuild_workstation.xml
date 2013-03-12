@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project AcaciaGitProject with Jar-in-Jar Loader">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+    <target name="create_run_jar">
+        <property file="src/data/build_info.properties"/>
+             <echo message="${build.number}"/>
+     		<property name="version.number" value="${build.major.number}.${build.minor.number}.b${build.number}"/>
+    	<jar destfile="/home/bra427/Projects/AcaciaJars/acacia-${version.number}.jar">
+            <manifest>
+                <attribute name="Built-By" value="Lauren Bragg"/>
+                   <attribute name="Implementation-Version" 
+                           value="${version.num}-b${build.number}"/>   
+                    <attribute name="Built-Date" value="${TODAY}"/> 
+                   <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
+                   <attribute name="Rsrc-Main-Class" value="pyromaniac.AcaciaMain"/>
+                   <attribute name="Class-Path" value="."/>                
+                   <attribute name="Rsrc-Class-Path" value="./ bytecode.jar biojava.jar colt.jar optimization.jar Blas.jar tcode.jar jfreechart-1.0.10.jar jcommon-1.0.13.jar language-1.6.7.jar event-1.6.5.jar logger-1.6.4.jar interpreter-1.6.8.jar ssj.jar blas.jar commons-cli-1.2.jar commons-math3-3.1.1.jar"/>
+            </manifest>	
+            <zipfileset src="jar-in-jar-loader.zip"/>
+            <fileset dir="/home/bra427/Projects/AcaciaDevelopment/Acacia/bin"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty" includes="bytecode.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty" includes="biojava.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="colt.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="optimization.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="Blas.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="tcode.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="jfreechart-1.0.10.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="jcommon-1.0.13.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="language-1.6.7.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="event-1.6.5.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="logger-1.6.4.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="interpreter-1.6.8.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib" includes="ssj.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty" includes="blas.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/commons-cli-1.2" includes="commons-cli-1.2.jar"/>
+            <zipfileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/commons-math3-3.1.1" includes="commons-math3-3.1.1.jar"/>
+            <fileset dir="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/hac/bin"/>
+        </jar>
+    </target>
+</project>

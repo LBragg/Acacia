@@ -435,7 +435,7 @@ public class AcaciaEngine
 	 * @throws Exception any exception during the runAcacia method
 	 */
 	public void runAcacia(HashMap <String, String> settings, LinkedList <MIDPrimerCombo> validTags,  AcaciaLogger logger, 
-			ErrorCorrectionWorker worker, String version) throws Exception
+			ErrorCorrectionWorker worker, String version, boolean runningFromGUI) throws Exception
 	{
 		
 		this.initLogFiles(settings, logger, runningFromGUI, validTags);
@@ -587,23 +587,30 @@ public class AcaciaEngine
 							Pair <RLEAlignmentIndelsOnly, HashMap <Pyrotag, Pair <Integer, Character>>> alignRes = mainAlignRes.pop();
 							///can I pass in the alignment singletons here... to see if they will align using a substitution only aligner? 
 
+							//this was the way the consensus was generated in the original acacia
+							boolean originalConsensusGeneration = true;
 							
-							if(alignRes.getSecond().size() > 10000)
-							{
-								logger.writeLog("Assessing whether large cluster of " + alignRes.getSecond().size() + " reads requires further partitioning...", AcaciaLogger.LOG_PROGRESS);	
-							}
-							
-							//don't want to do the full tests when there are obvious, highly significant deviations.
-							HashSet <HashSet <Pyrotag>> splitFurther = CoarseAlignSplitter.getInstance().scanAlignmentForObviousDeviations(logger, settings, outputHandles, alignRes, fc);
-
-							//System.out.println("After hierarchical clustering, we have " + splitFurther.size() + " sub-clusters");
-							LinkedList <RLEAlignmentIndelsOnly> result = alignRes.getFirst().splitNonConforming(splitFurther);
-
-							for(RLEAlignmentIndelsOnly subalign: result)
+							if(originalConsensusGeneration)
 							{
 								HashMap <Pyrotag, Pair <Integer,Character>> flowMapInner = cloneFlowHash(alignRes.getSecond());
 
-								numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, subalign, flowMapInner, representativeSeqs, fc);
+								numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, alignRes.getFirst(), flowMapInner, representativeSeqs, fc);
+								
+							}
+							else //new way, which attempts to partition the alignment if there are obvious deviations.
+							{
+								//don't want to do the full tests when there are obvious, highly significant deviations.
+								HashSet <HashSet <Pyrotag>> splitFurther = CoarseAlignSplitter.getInstance().scanAlignmentForObviousDeviations(logger, settings, outputHandles, alignRes, fc);
+								
+								//System.out.println("After hierarchical clustering, we have " + splitFurther.size() + " sub-clusters");
+								LinkedList <RLEAlignmentIndelsOnly> result = alignRes.getFirst().splitNonConforming(splitFurther);
+								
+								for(RLEAlignmentIndelsOnly subalign: result)
+								{
+									HashMap <Pyrotag, Pair <Integer,Character>> flowMapInner = cloneFlowHash(alignRes.getSecond());
+									
+									numSeqsCorrected += generateConsensusAndOutput(logger, settings, outputHandles, subalign, flowMapInner, representativeSeqs, fc);
+								}
 							}
 
 						}
@@ -1059,7 +1066,7 @@ public class AcaciaEngine
 	 * @param logger the logger
 	 * @return the tag importer
 	 */
-	private TagImporter getTagImporter(HashMap <String, String> settings, AcaciaLogger logger) 
+	public TagImporter getTagImporter(HashMap <String, String> settings, AcaciaLogger logger) 
 	{
 		TagImporter importer;
 		

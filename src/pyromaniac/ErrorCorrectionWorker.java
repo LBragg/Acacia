@@ -92,8 +92,8 @@ public class ErrorCorrectionWorker extends SwingWorker<Void, Void>
 		boolean exceptionOccurred = false;
 		try
 		{
-			AcaciaEngine.getEngine().initLogFiles(this.runSettings, this.logger,true, validMIDS);
-			AcaciaEngine.getEngine().runAcacia(this.runSettings, this.validMIDS, logger, this, AcaciaEngine.getVersion());
+//			AcaciaEngine.getEngine().initLogFiles(this.runSettings, this.logger,true, validMIDS);
+			AcaciaEngine.getEngine().runAcacia(this.runSettings, this.validMIDS, logger, this, AcaciaEngine.getVersion(), true);
 			logger.flushLogs();
 			logger.removeLogFiles(); //TODO: this was changed.
 		}

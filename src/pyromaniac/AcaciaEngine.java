@@ -133,12 +133,13 @@ public class AcaciaEngine
 				AcaciaConstants.OPT_MAX_RECURSE_DEPTH,
 				AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW,
 				AcaciaConstants.OPT_MIN_READ_REP_BEFORE_TRUNCATION,
-				AcaciaConstants.OPT_MIN_FLOW_TRUNCATION, //paired with the percentage of reads covering blah
+				AcaciaConstants.OPT_MIN_FLOW_TRUNCATION, 
 				AcaciaConstants.OPT_FILTER_READS_WITH_N_BEFORE_POS,
 				AcaciaConstants.OPT_SIGNIFICANT_WHEN_TWO,
 				AcaciaConstants.OPT_FLOW_CYCLE_STRING,
 				AcaciaConstants.OPT_MAX_COMPLETE_LINKAGE_DIST,
-				AcaciaConstants.OPT_HEX_CLUSTER_ONLY
+				AcaciaConstants.OPT_HEX_CLUSTER_ONLY,
+				AcaciaConstants.OPT_CLEAN_DATA
 		};
 		
 		String [] tmpSettingValues = 
@@ -169,7 +170,8 @@ public class AcaciaEngine
 				AcaciaConstants.DEFAULT_OPT_SIGNIFICANT_WHEN_TWO,
 				AcaciaConstants.DEFAULT_OPT_FLOW_CYCLE_STRING,
 				AcaciaConstants.DEFAULT_OPT_MAX_COMPLETE_LINKAGE_DIST,
-				AcaciaConstants.DEFAULT_OPT_HEX_CLUSTER_ONLY
+				AcaciaConstants.DEFAULT_OPT_HEX_CLUSTER_ONLY,
+				AcaciaConstants.DEFAULT_OPT_CLEAN_DATA
 		};
 		
 		settingKeys = tmpSettingKeys;
@@ -194,7 +196,7 @@ public class AcaciaEngine
 	 * Clone flow hash.
 	 *
 	 * @param toClone the flow hash to deep clone
-	 * @return a deep-cloned copy of the toClone hashmap
+	 * @return a deep-cloned copy of the toClone hash-map
 	 */
 	public HashMap <Pyrotag, Pair <Integer, Character>> cloneFlowHash(HashMap <Pyrotag, Pair <Integer, Character>> toClone)
 	{
@@ -290,7 +292,7 @@ public class AcaciaEngine
 	
 
 	/**
-	 * Gets the paramter MIN_READ_REP_BEFORE_TRUNCATION.
+	 * Gets the parameter MIN_READ_REP_BEFORE_TRUNCATION.
 	 *
 	 * @param settings the Acacia runtime settings
 	 * @return Double the minimum read representation (coverage) before truncation of the consensus
@@ -332,7 +334,7 @@ public class AcaciaEngine
 	 * @param settings the Acacia runtime settings
 	 * @param logger the Acacia logger
 	 * @param rc the RunCharacterisation object
-	 * @param midsToUse the mids to use
+	 * @param midsToUse the MIDs to use
 	 * @param outputHandles the output handles for this run
 	 * @param representativeSeqs the representative sequences so far
 	 * @return HashMap containing the consensus prefix to read mapping, which describes the perfect identity clusters
@@ -342,49 +344,9 @@ public class AcaciaEngine
 			RunCharacterisation rc, LinkedList <MIDPrimerCombo> midsToUse, HashMap<String, BufferedWriter> outputHandles, HashMap<Pyrotag, Integer> representativeSeqs) throws Exception
 	{
 		HashMap <String, LinkedList <Pyrotag>> perfectClusters = new HashMap <String, LinkedList <Pyrotag>>();
-		
-		
-		if(rc.getNumValidMIDS() == 0)
-		{
-			outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Number of reads with invalid MID: " + rc.getNumInvalidMIDS() + System.getProperty("line.separator"));
-			logger.writeLog("There were no valid MIDS in the file!", AcaciaLogger.LOG_ERROR);
-			logger.writeLog("There were no valid MIDS in the file!", AcaciaLogger.LOG_PROGRESS);
-			return null;
-		}
-		
-		
-		double meanLength = rc.getMeanReadLengthForMID(midsToUse);
-		double stdDevRead = rc.calculateLengthStandardDevForRead(midsToUse);
-		double stdDevCollapsed = rc.calculateCollapsedLengthStandardDevForRead(midsToUse);
-				
-		
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Mean length (before filtering): " + meanLength + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Length SD (before filtering):  " + stdDevRead + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Length SD collapsed (before filtering):  " + stdDevCollapsed + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("Number of reads with invalid MID: " + rc.getNumInvalidMIDS() + System.getProperty("line.separator"));
-		
-		
-		double numStdDev = Double.parseDouble(settings.get(AcaciaConstants.OPT_MAX_STD_DEV_LENGTH));
-		
-		int minReadLength = (int) (meanLength - (numStdDev * stdDevRead));
-		int maxReadLength = (int) (meanLength + (numStdDev * stdDevRead));	
-		
-		if(minReadLength < 0)
-			minReadLength = 0;
-		
-		logger.writeLog("Accepting reads in the range: " + minReadLength + " - " + maxReadLength, AcaciaLogger.LOG_PROGRESS);
-		
-		int minCollapsedSize = AcaciaConstants.DEFAULT_OPT_TRIM_COLLAPSED;
-		int minQual = Integer.parseInt(settings.get(AcaciaConstants.OPT_MIN_AVG_QUALITY));
+			
 		int usableSeqs = 0;
-		int unusableSeqs = 0;
-		int lowQuality = 0;
-		int outsideLengthRange = 0;
-		int hasNs = 0;
-		int hasWobble = 0;
-		int collapsedTooShort = 0;
-		int trimLengthGeneral = this.getTrim(settings);
-		
+
 		HashMap <String, Integer> dereplicated = new HashMap<String, Integer>();
 		
 		boolean verbose = false;
@@ -409,146 +371,40 @@ public class AcaciaEngine
 		
 			for(Pyrotag p: seqs)
 			{	
-				int trimLength = trimLengthGeneral; //overall trim length.
-				
-				boolean satisfyOverallLength = (p.getReadString().length >= minReadLength) && (p.getReadString().length <= maxReadLength);
-				
-				
-				//trim read to a particular flow position
-				if(!
-						(settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW) == null || settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW).equals("null")
-						|| settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW).equals("")))
-				{
-					int flowToTrimTo = Integer.parseInt(settings.get(AcaciaConstants.OPT_TRUNCATE_READ_TO_FLOW));
-					int basePosForFlow = p.flowPosToBasePos(flowToTrimTo, settings.get(AcaciaConstants.OPT_FLOW_KEY));
-	
-					if(basePosForFlow != Pyrotag.NO_CORRESPONDING_FLOW)
-					{
-						if(trimLength > 0)
-						{
-							trimLength = (trimLength < basePosForFlow)? trimLength : basePosForFlow;
-						}	
-						else
-						{
-							trimLength = basePosForFlow;
-						}
-					}
-				}
-				
+							
 				//trim to first N.
 				//note that if the first N occurs straight after the MID primer, the read will have length zero.
 				int firstN = p.firstOccurrenceOfAmbiguous(); //
 				
-				if(trimLength > 0)
+				if(firstN != Pyrotag.NO_N)
 				{
-					p.setTrimToLength(trimLength);
+					throw new Exception("Sequence containing N found in data: maybe you should run cleaning first.");
 				}
 				
-				//so why do I set MID primer now?
-				p.setMIDPrimerCombo(midPrimer);
-				 
-				char [] collapsed = p.getCollapsedRead();
-							
-				int minNFlowPos = Integer.parseInt(settings.get(AcaciaConstants.OPT_FILTER_READS_WITH_N_BEFORE_POS)); //default is 350
-				
-				//firstly, this pertains to first N position, of which there may be zero.
-				int [] firstFlowForNs = null;
-				
-				if(firstN != Pyrotag.NO_N && collapsed.length > 0)
-				{
-						firstFlowForNs = p.getFlowPositionForCollapsedReadPosition(settings.get(AcaciaConstants.OPT_FLOW_KEY), firstN);
-				}
-				
-				//this should take care of the fact that N's can occur at the beginning.
-				if(firstN != Pyrotag.NO_N && (trimLength < 0 || trimLength > firstN))
-				{
-					trimLength = firstN;
-					p.setTrimToLength(trimLength);
-					collapsed = p.getCollapsedRead();
-				}
-
-				/* 1. The collapsed read needs to satisfy the minimum collapsed size
-				 * 2. There are no quality thresholds or the untrimmed average quality is greater than the min quality
-				 * 3. There are no wobbles in hte processed string
-				 * 4. Either there are no N's or the first flow for N's is greater than the min N flow position.
-				 */
-				
-				
-				
-				if(satisfyOverallLength && 
-						collapsed.length >=  minCollapsedSize
-						&& (p.getQualities() == null || p.getUntrimmedAvgQuality() >= minQual) 
-						&& ! p.hasWobbleInProcessedString() 
-						&& (firstN == Pyrotag.NO_N || (firstFlowForNs[FlowCycler.FLOW_POSITION] > minNFlowPos))
-					)
-				{
-					
-					//dont touch the other things.
-					p.setInternalID(usableSeqs + 1);
-					
-					usableSeqs++;
-					
-					
-					char [] trimmedSequence = p.getProcessedString();
 			
-					if(! dereplicated.containsKey(new String(trimmedSequence)))
-					{
-						dereplicated.put(new String(trimmedSequence), 0);
-					}
 					
-					dereplicated.put(new String(trimmedSequence), dereplicated.get(new String(trimmedSequence) + 1));
-					
-					char [] trimmedCollapsed = Arrays.copyOf(collapsed, minCollapsedSize);
-					
-					String rle = new String(trimmedCollapsed);
-					
-					if(!perfectClusters.containsKey(rle))
-					{
-						perfectClusters.put(rle, new LinkedList <Pyrotag>());
-					}
-					perfectClusters.get(rle).add(p);
-				}
-				else
-				{	
-					if(!satisfyOverallLength)
-					{
-						outsideLengthRange++;
-						if(verbose)
-							logger.writeLog("Outside acceptable size range [ " + minReadLength + " - " + maxReadLength + " ]: " + p.getID(), AcaciaLogger.LOG_DEBUG);
-					}
-					
-					if(firstN > 0  && firstFlowForNs[FlowCycler.FLOW_POSITION] < minNFlowPos)
-					{
-						if(verbose)
-							logger.writeLog("Has N's: " + p.getID(), AcaciaLogger.LOG_DEBUG);
+				//dont touch the other things.
+				p.setInternalID(usableSeqs + 1);	
+				usableSeqs++;
 						
-						hasNs++;
-					}
-					
-					if(p.hasWobbleInProcessedString())
-					{
-						if(verbose)
-							logger.writeLog("Has wobbles: " + p.getID(), AcaciaLogger.LOG_DEBUG);
-						hasWobble++;
-					}
-					
-					if(p.getQualities() != null  && p.getUntrimmedAvgQuality() < minQual)
-					{
-						lowQuality++;
-						
-						if(verbose)
-							logger.writeLog("Low quality:" + p.getID(), AcaciaLogger.LOG_DEBUG);
-					}
-					
-					if(collapsed.length < minCollapsedSize)
-					{
-						collapsedTooShort++;
-						if(verbose)
-							logger.writeLog("Collapsed too short: " + p.getID(), AcaciaLogger.LOG_DEBUG);
-					}
-					//too small, throw out.
-					unusableSeqs++;
+				char [] trimmedSequence = p.getProcessedString();
+			
+				if(! dereplicated.containsKey(new String(trimmedSequence)))
+				{
+					dereplicated.put(new String(trimmedSequence), 0);
 				}
+					
+				dereplicated.put(new String(trimmedSequence), dereplicated.get(new String(trimmedSequence) + 1));
+				
+				char [] trimmedCollapsed = Arrays.copyOf(p.getCollapsedRead(), AcaciaConstants.DEFAULT_OPT_TRIM_COLLAPSED);
+				
+				String rle = new String(trimmedCollapsed);
+				
+				if(!perfectClusters.containsKey(rle))
+				{
+					perfectClusters.put(rle, new LinkedList <Pyrotag>());
+				}
+				perfectClusters.get(rle).add(p);
 			}
 			
 			if(usableSeqs == 0)
@@ -556,15 +412,6 @@ public class AcaciaEngine
 				logger.writeLog("MID: " + midPrimer.getDescriptor() + " had no reads", AcaciaLogger.LOG_PROGRESS);	
 			}
 		}
-		
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# Seqs usable: " + usableSeqs + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# Seqs thrown out: " + unusableSeqs + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# Low quality: " + lowQuality + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# Outside length range [ " + minReadLength + " - " + maxReadLength + " ]: " + outsideLengthRange + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# with early N's: " + hasNs + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# with wobble's: " + hasWobble + System.getProperty("line.separator")); //really should never happen.
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# collapsed too short: " + collapsedTooShort + System.getProperty("line.separator"));
-		outputHandles.get(AcaciaConstants.STAT_OUT_FILE).write("# Unique sequences: " + dereplicated.size() + System.getProperty("line.separator"));
 		
 		if(usableSeqs == 0)
 		{
@@ -590,12 +437,14 @@ public class AcaciaEngine
 	public void runAcacia(HashMap <String, String> settings, LinkedList <MIDPrimerCombo> validTags,  AcaciaLogger logger, 
 			ErrorCorrectionWorker worker, String version) throws Exception
 	{
+		
+		this.initLogFiles(settings, logger, runningFromGUI, validTags);
+		
 		if(worker != null && worker.isCancelled())
 		{
 			throw new InterruptedException("Job cancelled");
 		}
-
-		logger.writeLog("Analysing file...", AcaciaLogger.LOG_PROGRESS);
+		
 
 		if(worker != null && worker.isCancelled())
 		{
@@ -605,17 +454,21 @@ public class AcaciaEngine
 
 		try
 		{
+			logger.writeLog("Analysing file...", AcaciaLogger.LOG_PROGRESS);
+			
+			RunCharacterisation rc = null;
+			DataCleaner dc = DataCleaner.getDataCleaner();
+			rc = dc.initialiseRunCharacterisation(settings, logger, validTags);
 
+
+			//TODO: test this has  not buggered up.
 			// get stats of tags in file.
-			RunCharacterisation rc = this.prepareFileForClustering(logger, settings, validTags);
-
 			if(worker != null && worker.isCancelled())
 			{
 				System.out.println("Failed 4");
 				throw new InterruptedException("Job cancelled");
 			}
 
-			
 			FlowCycler fc = new FlowCycler(settings.get(AcaciaConstants.OPT_FLOW_CYCLE_STRING), logger);
 			
 			//all tags to be processed must have a valid MID if mids were specified by the user.
@@ -644,9 +497,15 @@ public class AcaciaEngine
 				
 				logger.writeLog("Processing MID " + m.getDescriptor() + ": " + rc.getTagCountForMIDs(midsToProcess) + " tags", AcaciaLogger.LOG_PROGRESS);
 				
-				HashMap <Pyrotag, Integer> representativeSeqs = new HashMap <Pyrotag, Integer> ();
 				HashMap <String, BufferedWriter> outputHandles = this.initOutputFiles(settings, m);
-
+				
+				if(settings.containsKey(AcaciaConstants.OPT_CLEAN_DATA) && Boolean.parseBoolean(settings.get(AcaciaConstants.OPT_CLEAN_DATA)))
+				{
+					dc.filterAndTrimReads(settings, logger, rc, validTags, outputHandles);
+				}
+				
+				HashMap <Pyrotag, Integer> representativeSeqs = new HashMap <Pyrotag, Integer> ();
+				
 				int numSeqsCorrected = 0;
 				HashMap <String, LinkedList <Pyrotag>> perfectClusters =  generatePerfectClusters(settings, logger, rc, midsToProcess,
 						outputHandles, representativeSeqs);
@@ -669,12 +528,9 @@ public class AcaciaEngine
 				logger.writeLog("There are " + perfectClusters.size() + " after hexamer recruiting", AcaciaLogger.LOG_PROGRESS);
 
 				//at this point, do not care about the relationship between clusters...
-				
-				//TODO: temporary fix, 
-				
 				String hexClustOnly = settings.get(AcaciaConstants.OPT_HEX_CLUSTER_ONLY).toUpperCase();
 				
-				boolean outputClusterMemberships = (hexClustOnly.equals("T") || hexClustOnly.equals("TRUE"))? true : false; 
+				boolean outputClusterMemberships = Boolean.parseBoolean(hexClustOnly); 
 				int clusterID = 0;
 				
 				//do we need all those other output files... how do I never open them...
@@ -1193,280 +1049,7 @@ public class AcaciaEngine
 		RunCharacterisation rc = new RunCharacterisation(MIDToSequences, MIDseqLength, MIDcollapsedSeqLength, MIDqualities, validMID, invalidMID);
 		return rc;
 	}
-	
-	/**
-	 * The Class RunCharacterisation. Retains information about the mean and standard deviation in both read length, and run-length encoded read length.
-	 */
-	private class RunCharacterisation
-	{
-		
-		/** Hashmap mapping sequences to their corresponding MID. */
-		HashMap <MIDPrimerCombo, LinkedList <Pyrotag>> MIDToSequences;
-		
-		/** The MID seq length. */
-		HashMap <MIDPrimerCombo, Integer> MIDseqLength;
-		
-		/** The MI dcollapsed seq length. */
-		HashMap <MIDPrimerCombo, Integer> MIDcollapsedSeqLength;
-		
-		/** The MId qualities. */
-		HashMap <MIDPrimerCombo, Double> MIDqualities;
-		
-		/** The invalid mids. */
-		int invalidMIDS;
 
-		/** The valid mids */
-		int validMIDs;
-		
-		
-		/**
-		 * Instantiates a new run characterisation.
-		 *
-		 * @param MIDToSequences the mID to sequences
-		 * @param MIDSeqLength the mID seq length
-		 * @param MIDcollapsedSeqLength the mI dcollapsed seq length
-		 * @param MIDqualities the mI dqualities
-		 * @param invalidMIDS the invalid mids
-		 * @param invalidMID 
-		 */
-		public RunCharacterisation(HashMap <MIDPrimerCombo, LinkedList <Pyrotag>> MIDToSequences, 
-				HashMap <MIDPrimerCombo, Integer> MIDSeqLength,
-				HashMap <MIDPrimerCombo, Integer> MIDcollapsedSeqLength, 
-				HashMap <MIDPrimerCombo, Double> MIDqualities, int validMIDs, int invalidMIDS)
-		{
-			this.MIDToSequences = MIDToSequences;
-			this.MIDseqLength = MIDSeqLength;
-			this.MIDcollapsedSeqLength = MIDcollapsedSeqLength;
-			this.MIDqualities = MIDqualities;
-			this.invalidMIDS = invalidMIDS;
-			this.validMIDs = validMIDs;
-		}
-		
-		/**
-		 * Gets the number of reads which did not match the MIDS.
-		 *
-		 * @return the number of invalid mids
-		 */
-		public int getNumInvalidMIDS()
-		{
-			return this.invalidMIDS;
-		}
-		
-		public int getNumValidMIDS()
-		{
-			return this.validMIDs;
-		}
-		
-		/**
-		 * Calculate length standard dev for read.
-		 *
-		 * @param midsForCalc only reads with these MIDs will be included in the calculation
-		 * @return standard deviation of read lengths for the midsForCalc
-		 */
-		public double calculateLengthStandardDevForRead(LinkedList <MIDPrimerCombo> midsForCalc)
-		{
-			return calculateStandardDeviation(midsForCalc, this.MIDseqLength);
-		}
-		
-		/**
-		 * Calculate collapsed length standard dev for read.
-		 *
-		 * @param midsForCalc only reads with these MIDSs will be included in the calculation
-		 * @return the standard deviation in run length encoded (homopolymer collapsed) reads sequences
-		 */
-		public double calculateCollapsedLengthStandardDevForRead(LinkedList <MIDPrimerCombo> midsForCalc)
-		{
-			return calculateStandardDeviation(midsForCalc, this.MIDcollapsedSeqLength);
-		}
-		
-		/**
-		 * Gets the mean read length for mid.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @return the mean read length for mid
-		 */
-		public double getMeanReadLengthForMID(LinkedList <MIDPrimerCombo> midsForCalc)
-		{
-			return getMeanLengthForMID(midsForCalc, this.MIDseqLength);
-		}
-		
-		/**
-		 * Gets the mean collapsed read length for mid.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @return the mean collapsed read length for mid
-		 */
-		public double getMeanCollapsedReadLengthForMID(LinkedList <MIDPrimerCombo> midsForCalc)
-		{
-			return getMeanLengthForMID(midsForCalc, this.MIDcollapsedSeqLength);
-		}
-		
-		
-		/**
-		 * Gets the mean length for mid.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @param sumOfLengths the sum of lengths
-		 * @return the mean length for mid
-		 */
-		private double getMeanLengthForMID(LinkedList <MIDPrimerCombo> midsForCalc, HashMap <MIDPrimerCombo, Integer> sumOfLengths)
-		{
-			
-			LinkedList <MIDPrimerCombo> midsToProcess = midsForCalc;
-			
-			if(midsToProcess.size() == 1 && midsToProcess.getFirst() == AcaciaConstants.NO_MID_GROUP)
-				midsToProcess = new LinkedList <MIDPrimerCombo>(this.MIDToSequences.keySet());
-				
-			int lengthSum = sumLengthsForMIDs(midsToProcess, sumOfLengths);
-			int tagCount = getTagCountForMIDs(midsToProcess);
-			
-			if(tagCount == 0)
-				return -1;
-			
-			double mean = lengthSum / tagCount;
-			return mean;
-		}
-		
-		/**
-		 * Average quality for mids.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @return the double
-		 */
-		public double averageQualityForMIDs(LinkedList <MIDPrimerCombo> midsForCalc)
-		{
-			double qualitySum = 0;
-			int numTags = 0;
-			
-			LinkedList <MIDPrimerCombo> midsToProcess = midsForCalc;
-			
-			if(MIDqualities.size() == 0)
-				return 0;
-			
-			if(midsToProcess.size() == 1 && midsToProcess.getFirst() == AcaciaConstants.NO_MID_GROUP)
-			{
-				midsToProcess = new LinkedList <MIDPrimerCombo>(this.MIDToSequences.keySet());
-			}
-			
-			for(MIDPrimerCombo mid: midsToProcess)
-			{
-				if(MIDqualities.containsKey(mid))
-				{
-					qualitySum += MIDqualities.get(mid);
-					numTags += MIDToSequences.get(mid).size();
-				}
-			}
-			
-			if(numTags == 0)
-			{
-				return -1;
-			}
-			
-			return (qualitySum / numTags);
-		}
-		
-		/**
-		 * Calculate standard deviation.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @param sumOfLengths the sum of lengths
-		 * @return the double
-		 */
-		private double calculateStandardDeviation(LinkedList <MIDPrimerCombo> midsForCalc, HashMap <MIDPrimerCombo, Integer> sumOfLengths)
-		{
-
-			int tagCount = 0;
-			int lengthSum = 0;
-			double mean = 0;
-			double sumXMinusXBarSqr = 0;
-
-			LinkedList <MIDPrimerCombo> midsToProcess = midsForCalc;
-		
-			if(midsToProcess.size() == 1 && midsToProcess.getFirst() == AcaciaConstants.NO_MID_GROUP)
-				midsToProcess = new LinkedList <MIDPrimerCombo> (this.MIDToSequences.keySet());
-			
-		
-			lengthSum = sumLengthsForMIDs(midsToProcess, sumOfLengths);
-			tagCount = getTagCountForMIDs(midsToProcess);
-
-			if(tagCount == 0)
-				return -1;
-			
-			mean = (lengthSum / tagCount);
-
-			for(MIDPrimerCombo mid: midsToProcess)
-			{
-				if(!this.MIDToSequences.containsKey(mid))
-				{
-					continue;
-				}
-				
-				LinkedList <Pyrotag> relevantPyrotags = this.MIDToSequences.get(mid);
-
-			
-				for(Pyrotag p : relevantPyrotags)
-				{
-					double length = p.getLength();
-					double sqrdist = (length - mean) * (length - mean);		
-					sumXMinusXBarSqr += sqrdist;
-				}
-			}
-			double sampleStdDev = Math.sqrt(sumXMinusXBarSqr / tagCount);
-			return sampleStdDev;
-
-		}
-		
-		/**
-		 * Gets the tag count for mi ds.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @return the tag count for mi ds
-		 */
-		public int getTagCountForMIDs(LinkedList <MIDPrimerCombo> midsForCalc)
-		{
-			int tagCount = 0;
-			
-			LinkedList <MIDPrimerCombo> midsToProcess = midsForCalc;
-			
-			if(midsToProcess.size() == 1 && midsToProcess.getFirst() == AcaciaConstants.NO_MID_GROUP)
-				midsToProcess = new LinkedList <MIDPrimerCombo> (this.MIDToSequences.keySet());
-			
-			for(MIDPrimerCombo mid: midsToProcess)
-			{
-				if(MIDToSequences.containsKey(mid))
-				{
-					tagCount += MIDToSequences.get(mid).size();
-				}
-			}
-			return tagCount;
-		}
-		
-		/**
-		 * Sum lengths for mids.
-		 *
-		 * @param midsForCalc the mids for calc
-		 * @param sumOfLengths the sum of lengths
-		 * @return the int
-		 */
-		private int sumLengthsForMIDs(LinkedList <MIDPrimerCombo> midsForCalc, HashMap <MIDPrimerCombo, Integer> sumOfLengths)
-		{
-			int lengthSum = 0;
-			
-			LinkedList <MIDPrimerCombo> midsToProcess = midsForCalc;
-			
-			if(midsToProcess.size() == 1 && midsToProcess.getFirst() == AcaciaConstants.NO_MID_GROUP)
-				midsToProcess = new LinkedList <MIDPrimerCombo>(this.MIDToSequences.keySet());
-			
-			for(MIDPrimerCombo mid: midsForCalc)
-			{
-				if(sumOfLengths.containsKey(mid))
-				{
-					lengthSum += sumOfLengths.get(mid);
-				}
-			}
-			return lengthSum;
-		}
-	}	
 
 	//get Tag Importer
 	/**

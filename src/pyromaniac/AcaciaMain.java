@@ -370,7 +370,6 @@ public class AcaciaMain
 			HashMap <String, String> defaultSettings = AcaciaEngine.getEngine().getDefaultSettings();
 			TreeSet<String> keys = new TreeSet<String>(defaultSettings.keySet());
 			
-			//need to sort alphabetically, sick of the inconsistency...
 			for(String setting: keys)
 			{
 				String defaultVal = defaultSettings.get(setting);
@@ -471,7 +470,7 @@ public class AcaciaMain
 			AcaciaEngine engine = AcaciaEngine.getEngine();
 			
 			//System.out.println("Initialising the log files");
-			engine.initLogFiles(settings, logger, false, null);
+			//engine.initLogFiles(settings, logger, false, null);
 			
 			LinkedList <MIDPrimerCombo> validTags = null;
 			
@@ -485,8 +484,7 @@ public class AcaciaMain
 				validTags.add(AcaciaConstants.NO_MID_GROUP);
 			}
 			
-			System.out.println("Running acacia");
-			engine.runAcacia(settings, validTags, logger, null, AcaciaEngine.getVersion());
+			engine.runAcacia(settings, validTags, logger, null, AcaciaEngine.getVersion(), false);
 				
 		}
 		catch(OutOfMemoryError error)

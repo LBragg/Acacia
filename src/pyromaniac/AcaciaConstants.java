@@ -153,6 +153,7 @@ public final class AcaciaConstants
 		
 		public static final String OPT_MAX_COMPLETE_LINKAGE_DIST = "MAX_COMPLETE_LINKAGE_DISTANCE";
 		
+		public static final String OPT_CLEAN_DATA = "CLEAN_DATA";
 		
 		//parameter default values
 		/** The Constant DEFAULT_OPT_FASTA. */
@@ -228,9 +229,9 @@ public final class AcaciaConstants
 		/** The Constant DEFAULT_FILTER_N_BEFORE_POS. */
 		public static final String DEFAULT_FILTER_N_BEFORE_POS = "350";
 		
-		
-		
 		public static final String DEFAULT_OPT_MAX_COMPLETE_LINKAGE_DIST = "0.25";
+		
+		public static final String DEFAULT_OPT_CLEAN_DATA = "TRUE";
 		
 		/** The Constant DEFAULT_FILE_LOC. */
 		public static final String DEFAULT_FILE_LOC;
@@ -364,7 +365,7 @@ public final class AcaciaConstants
 		public static final String IGNORE_PRIMER = "NoPrimer";
 
 		public static final String OPT_HEX_CLUSTER_ONLY = "CLUSTER_ONLY";
-		public static final String DEFAULT_OPT_HEX_CLUSTER_ONLY = "F";
+		public static final String DEFAULT_OPT_HEX_CLUSTER_ONLY = "FALSE";
 		
 		static
 		{

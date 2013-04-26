@@ -258,9 +258,7 @@ public class TagInputPanel extends JPanel implements ActionListener,ListSelectio
 	
 	/** The hamming distance. */
 	private JTextField manhattanDistance;
-	
-	/** The hamming align distance. */
-	private JTextField hammingAlignDistance;
+
 	
 	/** The parent. */
 	private JFrame parent;
@@ -299,6 +297,8 @@ public class TagInputPanel extends JPanel implements ActionListener,ListSelectio
 	/** The format card panel. */
 	private JPanel formatCardPanel;
 	
+	private JPanel technologyCardPanel;
+	
 	/** The quality threshold. */
 	private JSpinner qualityThreshold;
 	
@@ -319,6 +319,10 @@ public class TagInputPanel extends JPanel implements ActionListener,ListSelectio
 	
 	/** The error model spinner. */
 	private JSpinner errorModelSpinner;
+
+	private ButtonGroup techFormat;
+
+	private JPanel techInnerPanel;
 	
 //	private static final String [] optionsSignificance = new String [] {"0", "0.001", "0.01", "0.025", "0.05", "0.1"};
 	
@@ -384,6 +388,20 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		"Two models are currently available: the Balzer et al. (2010) models include flow position as an effect, however these " +
 		"require that the sequences have had the key removed, but not the MID. If some kind of quality assurance has been applied to the reads, trimming the 5' end, the Quince (2009) models are preferable.";
 	//private static final String HELP_MAX_HAMMING_ALIGN_TEXT = "In the second phase of clustering, sequences with less than this hamming distance will be ";
+
+	private static final String TECH_454 = "TECH_454";
+
+	private static final String TECH_ION_TORRENT = "TECH_ION_TORRENT";
+
+	private static final String HELP_TECH_TEXT = "The sequencing platform used to generate the dataset.";
+	
+	private static final String [] modelOptions454 = new String [] {AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL, AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL}; 
+	private static final String [] modelOptionsIT = new String[]	{AcaciaConstants.OPT_ACACIA_IT_OT_100bp_314_MODEL,AcaciaConstants.OPT_ACACIA_IT_OT_100bp_316_MODEL, 
+			AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_314_MODEL, AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_316_MODEL, 
+			AcaciaConstants.OPT_ACACIA_IT_OT_200bp_314, AcaciaConstants.OPT_ACACIA_IT_OT_200bp_316};
+	
+	private static final javax.swing.SpinnerListModel errorModel454 = new SpinnerListModel(modelOptions454);
+	private static final javax.swing.SpinnerListModel errorModelIT = new SpinnerListModel(modelOptionsIT);
 	
 
 	/**
@@ -565,14 +583,38 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 	 * @param b the b
 	 * @throws Exception the exception
 	 */
-	private void addTreeConstructionPanel(JPanel panelToAddTo, Border b) throws Exception
+	private void addTreeConstructionPanel(JPanel panelToAddTo, Border b) throws HelpButton.MissingHelpImageException
 	{
 		this.mismatches = new JPanel();
 		this.mismatches.setLayout(new SpringLayout());
 		this.mismatches.setBorder(BorderFactory.createTitledBorder(b, "Analysis",TitledBorder.LEFT,TitledBorder.TOP, this.getFont()));
 		this.mismatches.setBackground(TagInputPanel.FORM_BACKGROUND_COLOUR);
 
+
+		this.techFormat = new ButtonGroup();
+		JRadioButton fourFiveFourButton = new JRadioButton("Roche 454");
+		fourFiveFourButton.setActionCommand(TECH_454);
+		fourFiveFourButton.addActionListener(this);
+		fourFiveFourButton.setBackground(TagInputPanel.FORM_BACKGROUND_COLOUR);
+		this.setDimensionsToDefault(fourFiveFourButton);
 		
+		JRadioButton ionTorrentButton = new JRadioButton("Ion Torrent");
+		ionTorrentButton.setActionCommand(TECH_ION_TORRENT);
+		ionTorrentButton.addActionListener(this);
+		ionTorrentButton.setBackground(TagInputPanel.FORM_BACKGROUND_COLOUR);
+		this.setDimensionsToDefault(ionTorrentButton);
+
+		this.techFormat.add(fourFiveFourButton);
+		this.techFormat.add(ionTorrentButton);
+		this.techFormat.setSelected(fourFiveFourButton.getModel(),true);
+		
+		this.techInnerPanel = new JPanel();
+		techInnerPanel.setLayout(new SpringLayout());
+		techInnerPanel.setBackground(TagInputPanel.FORM_BACKGROUND_COLOUR);
+		techInnerPanel.add(fourFiveFourButton);
+		techInnerPanel.add(ionTorrentButton);
+		SpringUtilities.makeCompactGrid(techInnerPanel, 1, 2, 0, 0, 50, 5);
+	
 		JLabel maxHammingDistLabel = new JLabel("Maximum k-mer dist between reads:");
 		adjustLabel(maxHammingDistLabel);
 		setDimensionsToDefault(maxHammingDistLabel);
@@ -583,15 +625,9 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		this.setTextFieldSize(manhattanDistance);
 		manhattanDistance.setHorizontalAlignment(JTextField.RIGHT);
 		
-		String [] options = new String [] {AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL, AcaciaConstants.OPT_PYRONOISE_ERROR_MODEL, 
-				AcaciaConstants.OPT_ACACIA_IT_OT_100bp_314_MODEL,AcaciaConstants.OPT_ACACIA_IT_OT_100bp_316_MODEL, 
-				AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_314_MODEL, AcaciaConstants.OPT_ACACIA_IT_MAN_200bp_316_MODEL, 
-				AcaciaConstants.OPT_ACACIA_IT_OT_200bp_314, AcaciaConstants.OPT_ACACIA_IT_OT_200bp_316};
 		
-		
-		javax.swing.SpinnerListModel errorModel = new SpinnerListModel(options);
+		javax.swing.SpinnerListModel errorModel = errorModel454;
 		errorModel.setValue(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL);	
-		
 		
 		JLabel errorModelLabel = new JLabel("Error model to use:");		
 		this.errorModelSpinner = new JSpinner(errorModel);
@@ -654,8 +690,20 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		helpPanelModels.setBackground(FORM_BACKGROUND_COLOUR);
 		helpPanelModels.setLayout(new BoxLayout(helpPanelModels, BoxLayout.LINE_AXIS));
 		helpPanelModels.add(new HelpButton(HELP_ERROR_MODEL_TEXT, this.parent));
+
+		JPanel helpPanelTech = new JPanel();
+		helpPanelTech.setBackground(FORM_BACKGROUND_COLOUR);
+		helpPanelTech.setLayout(new BoxLayout(helpPanelTech, BoxLayout.LINE_AXIS));
+		helpPanelTech.add(new HelpButton(HELP_TECH_TEXT, this.parent));
 		
+		//TODO: new
 		
+		JLabel blank = new JLabel();
+		blank.setBackground(FORM_BACKGROUND_COLOUR);
+		
+		mismatches.add(techInnerPanel);
+		mismatches.add(blank);
+		mismatches.add(helpPanelTech);
 		
 		mismatches.add(maxHammingDistLabel);
 		mismatches.add(manhattanDistance);
@@ -672,9 +720,11 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		mismatches.add(spinnerRepresentativeSeq);
 		mismatches.add(helpPanelRepresentative);
 		
-		SpringUtilities.makeCompactGrid(mismatches, 4, 3, 5, 5, 5, 5);
+		SpringUtilities.makeCompactGrid(mismatches, 5, 3, 5, 5, 5, 5);
 		panelToAddTo.add(mismatches);
 	}
+	
+
 
 	/**
 	 * Creates the submit or clear panel.
@@ -695,11 +745,11 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		submit.setActionCommand(SUBMIT_FORM);
 		submit.addActionListener(this);
 	
-		JButton clear = new AcaciaGradientButton("Clear form", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED); 	
+		JButton clear = new AcaciaGradientButton("Clear", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED); 	
 		clear.setActionCommand(CLEAR_FORM);
 		clear.addActionListener(this);
 		
-		this.cancel = new AcaciaGradientButton("Cancel Run", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
+		this.cancel = new AcaciaGradientButton("Cancel", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
 		cancel.setActionCommand(CANCEL_RUN);
 		cancel.addActionListener(this);
 		cancel.setEnabled(false);
@@ -1436,6 +1486,17 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			this.populateMIDSPanel(this.midsChoice.getText());
 			
 		}
+		else if(e.getActionCommand().equals(TECH_454))
+		{
+			this.errorModelSpinner.setModel(errorModel454);
+			errorModel454.setValue(AcaciaConstants.OPT_FLOWSIM_ERROR_MODEL);//needs to be a default it model.			
+		}
+		else if(e.getActionCommand().equals(TECH_ION_TORRENT))
+		{
+			//restrict the options for the models...
+			this.errorModelSpinner.setModel(errorModelIT);
+			errorModelIT.setValue(AcaciaConstants.OPT_ACACIA_IT_OT_200bp_316);
+		}
 		else if(e.getActionCommand().equals(FIND_PROJECT_DIR))
 		{
 			if(this.outputDir == null)
@@ -1628,6 +1689,14 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		settings.put(AcaciaConstants.OPT_MIN_AVG_QUALITY, (String) this.qualityThreshold.getValue());
 		settings.put(AcaciaConstants.OPT_MAXIMUM_MANHATTAN_DIST, (String) this.manhattanDistance.getText());
 		settings.put(AcaciaConstants.OPT_ERROR_MODEL, (String) this.errorModelSpinner.getValue());
+		
+		
+
+		if(this.techFormat.getSelection().getActionCommand().equals(TECH_ION_TORRENT))
+		{
+			settings.put(AcaciaConstants.OPT_FLOW_CYCLE_STRING, AcaciaConstants.OPT_FLOW_CYCLE_ION_TORRENT);
+		}
+		
 		
 		//settings.put(Acacia, arg1) for align hamming distance.
 		settings.put(AcaciaConstants.OPT_SIGNIFICANCE_LEVEL, (String)this.spinnerSignificance.getValue());

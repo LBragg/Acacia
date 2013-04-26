@@ -25,8 +25,8 @@ import java.math.BigDecimal;
 import java.net.URL;
 import java.util.HashMap;
 
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.distribution.NormalDistributionImpl;
+import org.apache.commons.math3.exception.*;
+import org.apache.commons.math3.distribution.NormalDistribution;
 
 import pyromaniac.AcaciaConstants;
 import pyromaniac.DataStructures.FlowCycler;
@@ -259,7 +259,7 @@ public class BalzerOUCallFrequencyTable implements OUFrequencyTable
 			sd = new BigDecimal(this.normalDistParams.get(mode).getSecond()).add(flowEffect).setScale(SCALE,  BigDecimal.ROUND_HALF_UP);
 		}
 
-		NormalDistributionImpl norm = new NormalDistributionImpl(mean.doubleValue(), sd.doubleValue());
+		NormalDistribution norm = new NormalDistribution(mean.doubleValue(), sd.doubleValue());
 	
 		try
 		{
@@ -288,7 +288,7 @@ public class BalzerOUCallFrequencyTable implements OUFrequencyTable
 				
 				return probs;
 		}
-		catch(MathException me)
+		catch(MathIllegalStateException me)
 		{
 			me.getStackTrace();
 		}

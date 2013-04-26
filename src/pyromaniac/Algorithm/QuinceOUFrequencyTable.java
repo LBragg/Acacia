@@ -19,8 +19,9 @@
 
 package pyromaniac.Algorithm;
 
-import org.apache.commons.math.MathException;
-import org.apache.commons.math.distribution.NormalDistributionImpl;
+import org.apache.commons.math3.exception.*;
+
+import org.apache.commons.math3.distribution.NormalDistribution;
 
 import pyromaniac.AcaciaConstants;
 import pyromaniac.Algorithm.OUFrequencyTable;
@@ -170,7 +171,7 @@ public class QuinceOUFrequencyTable implements OUFrequencyTable
 		BigDecimal lowerBound = modeBD.subtract(new BigDecimal(SUBTRACT_FOR_LB)).setScale(SCALE, BigDecimal.ROUND_HALF_UP);
 		BigDecimal upperBound = modeBD.add(new BigDecimal(ADD_FOR_UB)).setScale(SCALE, BigDecimal.ROUND_HALF_UP);
 		
-		NormalDistributionImpl norm = new NormalDistributionImpl(mode, sd.doubleValue());
+		NormalDistribution norm = new NormalDistribution(mode, sd.doubleValue());
 	
 		try
 		{
@@ -190,7 +191,7 @@ public class QuinceOUFrequencyTable implements OUFrequencyTable
 				BigDecimal [] probs = {probLessThan, probEqualTo, probMoreThan};
 				return probs;
 		}
-		catch(MathException me)
+		catch(MathIllegalStateException me)
 		{
 			me.getStackTrace();
 		}

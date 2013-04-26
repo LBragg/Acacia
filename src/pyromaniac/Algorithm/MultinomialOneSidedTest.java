@@ -19,7 +19,7 @@ package pyromaniac.Algorithm;
 
 import java.util.HashSet;
 
-import org.apache.commons.math.distribution.NormalDistributionImpl;
+import org.apache.commons.math3.distribution.NormalDistribution;
 
 import pyromaniac.IO.AcaciaLogger;
 
@@ -139,7 +139,7 @@ public class MultinomialOneSidedTest extends HypothesisTest
 				}
 			}
 
-			NormalDistributionImpl norm = new NormalDistributionImpl();
+			NormalDistribution norm = new NormalDistribution();
 
 			double w2Num  = Math.pow(((N - sumX) - N * (1 - sumP)),2) ; 
 			double w2Denom =(N * (1 - sumP)); 

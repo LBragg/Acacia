@@ -1433,7 +1433,7 @@ public class AcaciaEngine
 		if(validMIDS.size() == 0)
 		{
 			config.write(AcaciaConstants.OPT_MID + AcaciaConstants.CONFIG_DELIMITER + AcaciaConstants.OPT_NO_MID + System.getProperty("line.separator"));
-			config.write(AcaciaConstants.OPT_MID_FILE + ":" + System.getProperty("line.separator"));
+			config.write(AcaciaConstants.OPT_MID_FILE + AcaciaConstants.CONFIG_DELIMITER + System.getProperty("line.separator"));
 		}
 		else
 		{

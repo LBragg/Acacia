@@ -86,11 +86,19 @@ public class HelpButton extends JButton implements ActionListener
 	 * @param frame the frame
 	 * @throws Exception the exception
 	 */
-	public HelpButton(String helpMessage, JFrame frame) throws Exception
+	public HelpButton(String helpMessage, JFrame frame) throws MissingHelpImageException
 	{
 		super();
 		
-		URL imageURL = AcaciaEngine.getImageUrl(HELP_ICON);
+		URL imageURL;
+		try
+		{
+			imageURL = AcaciaEngine.getImageUrl(HELP_ICON);
+		}
+		catch(Exception e)
+		{
+			throw new MissingHelpImageException(e);
+		}
 		
 		helpImage = Toolkit.getDefaultToolkit().getImage(imageURL);		
 		MediaTracker mTracker = new MediaTracker(this);
@@ -148,5 +156,17 @@ public class HelpButton extends JButton implements ActionListener
 		dialog.setTitle("Help");
 		dialog.setVisible(true);
 	}
-	
+
+	public class MissingHelpImageException extends Exception
+	{
+		public MissingHelpImageException(Exception e)
+		{
+			super(e);
+		}
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		
+	}
 }

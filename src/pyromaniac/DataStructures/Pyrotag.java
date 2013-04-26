@@ -843,12 +843,13 @@ public class Pyrotag
 		return sb.toString();
 	}
 	
+	
 	/**
 	 * To fasta.
 	 *
 	 * @return the string
 	 */
-	public String toFASTA()
+	public String processedToFASTA()
 	{
 		char [] processedStr = this.getProcessedString();
 		StringBuffer sb = new StringBuffer();
@@ -857,24 +858,18 @@ public class Pyrotag
 		sb.append(">" + this.id + " " + this.desc);
 		sb.append(System.getProperty("line.separator"));
 		
-		sb.append(new String(processedStr));
-		sb.append(System.getProperty("line.separator"));
-		
-		/*
 		for(int i = 0; (i + width) < processedStr.length; i+= width)
 		{
 			sb.append(processedStr, i, width);
 			sb.append(System.getProperty("line.separator"));
 					
-			
 			if(i + width > processedStr.length)
 			{
 				width = processedStr.length - i;
 			}
 		}
-		*/
-		return sb.toString();
 		
+		return sb.toString();
 	}
 	
 

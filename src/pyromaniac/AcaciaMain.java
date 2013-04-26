@@ -470,6 +470,8 @@ public class AcaciaMain
 			AcaciaEngine engine = AcaciaEngine.getEngine();
 			
 			//System.out.println("Initialising the log files");
+			
+			//TODO: should not be here, but in runAcacia. Why is it here (and is it something to do with the GUI?)
 			//engine.initLogFiles(settings, logger, false, null);
 			
 			LinkedList <MIDPrimerCombo> validTags = null;

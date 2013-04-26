@@ -61,10 +61,7 @@ public final class AcaciaConstants
 		
 		/** The Constant OPT_MID_FILE. */
 		public static final String OPT_MID_FILE = "MID_FILE";
-		
-		/** The Constant OPT_PERFORM_CALL_CORR. */
-		public static final String OPT_PERFORM_CALL_CORR = "PERFORM_ERROR_CORRECTION";
-		
+
 		/** The Constant OPT_TRIM_TO_LENGTH. */
 		public static final String OPT_TRIM_TO_LENGTH = "TRIM_TO_LENGTH";
 		
@@ -174,9 +171,6 @@ public final class AcaciaConstants
 		/** The Constant DEFAULT_OPT_LOOKAHEAD. */
 		public static final String DEFAULT_OPT_LOOKAHEAD = "TRUE";
 		
-		/** The Constant DEFAULT_OPT_PERFORM_CALL_CORR. */
-		public static final String DEFAULT_OPT_PERFORM_CALL_CORR = "TRUE";
-		
 		/** The Constant DEFAULT_OPT_SIGNIFICANCE_LEVEL. */
 		public static final String DEFAULT_OPT_SIGNIFICANCE_LEVEL = "-9";
 		
@@ -250,6 +244,8 @@ public final class AcaciaConstants
 		
 		/** The Constant FLOWSIM_PROBS_LOCATION. */
 		public static final String ACACIA_EMP_MODEL_TITANIUM_LOCATION;
+		
+		//Ion Torrent is changing rapidly, maybe I should get the user to supply this...
 		
 		public static final String IONTORRENT_314_100bp_PROBS_LOCATION;
 		public static final String IONTORRENT_314_100bp_ZERO_COEF;
@@ -366,6 +362,8 @@ public final class AcaciaConstants
 
 		public static final String OPT_HEX_CLUSTER_ONLY = "CLUSTER_ONLY";
 		public static final String DEFAULT_OPT_HEX_CLUSTER_ONLY = "FALSE";
+
+		
 		
 		static
 		{

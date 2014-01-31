@@ -20,26 +20,25 @@ package pyromaniac.IO;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.RandomAccessFile;
 import java.nio.CharBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
-import java.util.LinkedList;
-
+import org.apache.commons.math3.util.Pair;
 import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MutableInteger;
 import pyromaniac.DataStructures.Pyrotag;
 import pyromaniac.DataStructures.Sequence;
 
+
+
+
 // TODO: Auto-generated Javadoc
 /**
  * The Class MMFastaImporter.
  */
-public class MMFastaImporter implements TagImporter
+public class MMFastaImporter extends TagImporter
 {
 	
 	/** The logger. */
@@ -51,14 +50,14 @@ public class MMFastaImporter implements TagImporter
 	/** The qual file. */
 	private String qualFile;
 	
-	/** The seq starts. */
-	private int[] seqStarts; //populate these first
+	/** The length of the files as longs */
+	private long qualSizeLong;
+	private long seqSizeLong;
 	
-	/** The qual starts. */
-	private int [] qualStarts;//populate these first
+	private ArrayList <Pair<Integer, Long>> qualStartsLL; 
+	private ArrayList <Pair<Integer, Long>> seqStartsLL;
 	
-	/** The decoder. */
-	private CharsetDecoder decoder = Charset.forName(System.getProperty("file.encoding")).newDecoder();
+
 	
 	/** The Constant BEGINNING_FASTA_HEADER. */
 	public static final char  BEGINNING_FASTA_HEADER = '>';
@@ -67,10 +66,10 @@ public class MMFastaImporter implements TagImporter
 	public static final String ACCEPTIBLE_IUPAC_CHARS = "ATGCNURYWSMKBHDV";
 	
 	/** The seq buffer. */
-	private MappedByteBuffer seqBuffer;
+	private ArrayList <MappedByteBuffer> seqBuffers;
 	
 	/** The qual buffer. */
-	private MappedByteBuffer qualBuffer;
+	private ArrayList <MappedByteBuffer> qualBuffers;
 	
 	private FlowCycler cycler;
 	
@@ -87,8 +86,8 @@ public class MMFastaImporter implements TagImporter
 		this.seqFile = seqFile;
 		this.qualFile = qualFile;
 		this.logger = logger;
-		this.seqBuffer = null;
-		this.qualBuffer = null;
+		this.seqBuffers = new ArrayList <MappedByteBuffer>();
+		this.qualBuffers = new ArrayList <MappedByteBuffer>();
 		this.cycler = new FlowCycler(flowCycle, logger);
 		this.init();
 	}
@@ -98,11 +97,11 @@ public class MMFastaImporter implements TagImporter
 	 */
 	public int getNumberOfSequences()
 	{
-		return this.seqStarts.length;
+		return this.seqStartsLL.size();
 	}
 	
 	/**
-	 * Inits the.
+	 * Initialises the qual and seq starts.
 	 */
 	public void init()
 	{
@@ -110,6 +109,7 @@ public class MMFastaImporter implements TagImporter
 		try
 		{
 			_initSeq();
+			
 			if(!(this.qualFile == null || this.qualFile.trim().length() == 0 || this.qualFile.equals("null")))
 			{
 				_initQual();
@@ -130,6 +130,7 @@ public class MMFastaImporter implements TagImporter
 		}
 	}
 	
+	
 	/**
 	 * _init qual.
 	 *
@@ -139,53 +140,50 @@ public class MMFastaImporter implements TagImporter
 	{
 		FileInputStream tempStream = new FileInputStream(new File(this.qualFile)); 
 		FileChannel fcQual = tempStream.getChannel();
-		
-		qualBuffer = fcQual.map(FileChannel.MapMode.READ_ONLY, 0, fcQual.size());
-		LinkedList <Integer> qualStartsLL = new LinkedList <Integer>();
-		
-		int maxBuffer = 2048;
-		int bufferSize = (qualBuffer.capacity() > maxBuffer)? maxBuffer: qualBuffer.capacity();
-		
-		qualBuffer.limit(bufferSize);
-		qualBuffer.position(0);
-		
-		while(qualBuffer.position() != qualBuffer.capacity())
-		{					
-			int prevPos = qualBuffer.position();
-			CharBuffer result = decoder.decode(qualBuffer);	
-			qualBuffer.position(prevPos);
-			
-			for(int i = 0; i < result.capacity(); i++)
-			{
-				char curr = result.charAt(i);
-				int posInFile = prevPos + i ;
+		this.qualSizeLong = fcQual.size();
 
-				if(curr == BEGINNING_FASTA_HEADER)	
-				{
-					qualStartsLL.add(posInFile);
-				}	
-			}
-			
-			int newPos = qualBuffer.limit();
-			
-			if(qualBuffer.limit() + bufferSize > qualBuffer.capacity())
-				qualBuffer.limit(qualBuffer.capacity());
-			else
-				qualBuffer.limit(qualBuffer.limit() + bufferSize);
-			qualBuffer.position(newPos);
-		}
-		qualBuffer.rewind();
+		//qual starts LL contains pairs, marking file #no (in  qualBuffers) and position #no (in the buffer).
+    	this.qualStartsLL = new ArrayList <Pair<Integer,Long>>();
 		
-		this.qualStarts = new int [qualStartsLL.size()];
+        for (long startPosition = 0L; startPosition < this.qualSizeLong; startPosition += HALF_GIGA)
+        {
+        	MappedByteBuffer qualBuffer = fcQual.map(FileChannel.MapMode.READ_ONLY, startPosition, Math.min(this.qualSizeLong - startPosition, HALF_GIGA)); //map half a gig to this channel.
+        	this.qualBuffers.add(qualBuffer);
+        	int qbf_pos = qualBuffers.size() - 1;
+        	int maxBuffer = 2048;
+        	int bufferSize = (qualBuffer.capacity() > maxBuffer)? maxBuffer: qualBuffer.capacity();
 		
-		int pos = 0;
-		for(int element : qualStartsLL)
-		{
-			this.qualStarts[pos] = element;
-			pos++;
-		}
+        	qualBuffer.limit(bufferSize);
+        	qualBuffer.position(0);
+		
+        	while(qualBuffer.position() != qualBuffer.capacity())
+        	{					
+        		int prevPos = qualBuffer.position();
+        		CharBuffer result = decoder.decode(qualBuffer);	
+        		qualBuffer.position(prevPos);
+			
+        		for(int i = 0; i < result.capacity(); i++)
+        		{
+        			char curr = result.charAt(i);
+        			int posInFile = prevPos + i ;
+        			
+        			if(curr == BEGINNING_FASTA_HEADER)	
+        			{        				
+        				qualStartsLL.add(new Pair<Integer, Long>(qbf_pos, new Long(posInFile)));
+        			}		
+        		}
+			
+        		int newPos = qualBuffer.limit();
+        		
+        		if(qualBuffer.limit() + bufferSize > qualBuffer.capacity())
+        			qualBuffer.limit(qualBuffer.capacity());
+        		else
+        			qualBuffer.limit(qualBuffer.limit() + bufferSize);
+        		qualBuffer.position(newPos);
+        	}
+        	qualBuffer.rewind();
+        }
 	}
-	
 	
 	/**
 	 * _init seq.
@@ -196,79 +194,71 @@ public class MMFastaImporter implements TagImporter
 	{
 		FileInputStream tempStream = new FileInputStream(new File(this.seqFile)); 
 		FileChannel fcSeq = tempStream.getChannel();
+		this.seqSizeLong = fcSeq.size();
+		this.seqStartsLL = new ArrayList <Pair<Integer,Long>>();
 		
-		seqBuffer = fcSeq.map(FileChannel.MapMode.READ_ONLY, 0, fcSeq.size());
-		LinkedList <Integer> seqStartsLL = new LinkedList <Integer>();
+        for (long startPosition = 0L; startPosition < this.seqSizeLong; startPosition += HALF_GIGA)
+        {
+        	MappedByteBuffer seqBuffer = fcSeq.map(FileChannel.MapMode.READ_ONLY, startPosition,
+        			Math.min(this.seqSizeLong - startPosition, HALF_GIGA));
+        	
+        	this.seqBuffers.add(seqBuffer);
+        	int sbf_pos = seqBuffers.size() - 1;
+        	int maxBuffer = 2048;
+        	int bufferSize = (seqBuffer.capacity() > maxBuffer)? maxBuffer: seqBuffer.capacity();
 		
-		int maxBuffer = 2048;
-		int bufferSize = (seqBuffer.capacity() > maxBuffer)? maxBuffer: seqBuffer.capacity();
+        	seqBuffer.limit(bufferSize);
+        	seqBuffer.position(0);
 		
-		seqBuffer.limit(bufferSize);
-		seqBuffer.position(0);
-		
-		while(seqBuffer.position() != seqBuffer.capacity())
-		{					
-			int prevPos = seqBuffer.position();
-			CharBuffer result = decoder.decode(seqBuffer);	
-			seqBuffer.position(prevPos);
+        	while(seqBuffer.position() != seqBuffer.capacity())
+        	{					
+        		int prevPos = seqBuffer.position();
+        		CharBuffer result = decoder.decode(seqBuffer);	
+        		seqBuffer.position(prevPos);
 			
-			for(int i = 0; i < result.capacity(); i++)
-			{
-				char curr = result.charAt(i);
-				int posInFile = prevPos + i ;
-
-				if(curr == BEGINNING_FASTA_HEADER)	
-				{
-					seqStartsLL.add(posInFile);
-				}	
-			}
+        		for(int i = 0; i < result.capacity(); i++)
+        		{
+        			char curr = result.charAt(i);
+        			int posInFile = prevPos + i ;
+        			
+        			if(curr == BEGINNING_FASTA_HEADER)	
+        			{
+        				seqStartsLL.add(new Pair <Integer, Long>(sbf_pos, new Long(posInFile)));
+        			}	
+        		}
 			
-			int newPos = seqBuffer.limit();
+        		int newPos = seqBuffer.limit();
 			
-			if(seqBuffer.limit() + bufferSize > seqBuffer.capacity())
-				seqBuffer.limit(seqBuffer.capacity());
-			else
-				seqBuffer.limit(seqBuffer.limit() + bufferSize);
-			seqBuffer.position(newPos);
-		}
-		seqBuffer.rewind();
-		
-		this.seqStarts = new int [seqStartsLL.size()];
-		
-		int pos = 0;
-		for(int element : seqStartsLL)
-		{
-			this.seqStarts[pos] = element;
-			pos++;
-		}
-		
-		if(this.qualFile == null || this.qualFile.trim().length() == 0)
-		{
-			return;
-		}
+        		if(seqBuffer.limit() + bufferSize > seqBuffer.capacity())
+        			seqBuffer.limit(seqBuffer.capacity());
+        		else
+        			seqBuffer.limit(seqBuffer.limit() + bufferSize);
+        		seqBuffer.position(newPos);
+        	}
+        	seqBuffer.rewind();
+        }
+        
+        
 	}
-	
-	
+
 	//pyrotag at index.
 	/* (non-Javadoc)
 	 * @see pyromaniac.IO.TagImporter#getPyrotagAtIndex(int)
 	 */
-	public Pyrotag getPyrotagAtIndex(int index)
+	public Pyrotag getPyrotagAtIndex(int index) throws Exception
 	{
-		if(index >= this.seqStarts.length)
+		if(index >= this.seqStartsLL.size())
 			return null;
 		
-		
-		char [] relSeqBlock = getBlock(this.seqStarts, index, this.seqBuffer);
+		char [] relSeqBlock = getBlock(this.seqStartsLL, index, this.seqBuffers);
 		
 		//construct the pyrotag in this block.
 		Sequence <Character> pyrotagSeq = processSeqBlock(relSeqBlock);
-		
 		Sequence <Integer> qualitySeq = null;
 		
 		if(this.qualFile != null)
 		{
-			char [] relQualBlock = getBlock(this.qualStarts,index, this.qualBuffer);
+			char [] relQualBlock = getBlock(this.qualStartsLL, index, this.qualBuffers);
 			qualitySeq = processQualBlock(relQualBlock);
 		}
 		
@@ -278,44 +268,6 @@ public class MMFastaImporter implements TagImporter
 		return p;
 	}
 	
-	/**
-	 * Gets the block.
-	 *
-	 * @param starts the starts
-	 * @param index the index
-	 * @param buff the buff
-	 * @return the block
-	 */
-	public char [] getBlock(int [] starts, int index, MappedByteBuffer buff)
-	{
-		if(index  >= starts.length)
-		{
-			return null;
-		
-		}
-		long blockStart = starts[index];
-		long blockEnd = blockStart;
-		if(index == starts.length - 1)
-			blockEnd = buff.capacity(); 
-		else
-			blockEnd = starts[index + 1];
-
-		try
-		{
-			buff.limit((int)blockEnd);
-			buff.position((int)blockStart);
-			CharBuffer resBuffer = decoder.decode(buff);
-			buff.rewind();
-			return resBuffer.array();
-		}
-		catch(Exception e)
-		{
-			System.out.println("Error: " + e.getMessage());
-			System.out.println("Tried to get block starting at " + blockStart + " for " + (blockEnd - blockStart + 1) + " chars");
-			System.out.println("The maximum block size is " + buff.limit());
-		}
-		return null;
-	}
 	
 	/**
 	 * Process seq block.
@@ -541,9 +493,9 @@ public class MMFastaImporter implements TagImporter
 	 */
 	public void closeFiles() 
 	{
-		// TODO Auto-generated method stub
+		//TODO: check for side-effects
+		this.qualBuffers.clear();
+		this.seqBuffers.clear();
 		
 	}
-	
-	
 }

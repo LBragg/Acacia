@@ -26,19 +26,19 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
-import java.util.LinkedList;
+
+import org.apache.commons.math3.util.Pair;
 
 import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MutableInteger;
 import pyromaniac.DataStructures.Pyrotag;
 import pyromaniac.DataStructures.Sequence;
-import pyromaniac.IO.MMFastaImporter.SeqFormattingException;
 
 // TODO: Auto-generated Javadoc
 /**
  * The Class MMFastqImporter.
  */
-public class MMFastqImporter implements TagImporter
+public class MMFastqImporter extends TagImporter
 {
 	
 	/** The logger. */
@@ -48,7 +48,9 @@ public class MMFastqImporter implements TagImporter
 	private String fastqFile;
 	
 	/** The record starts. */
-	private int[] recordStarts; //populate these first
+	private ArrayList <Pair <Integer, Long>> recordStarts; //populate these first
+	
+	private long seqSizeLong;
 	
 	/** The decoder. */
 	private CharsetDecoder decoder = Charset.forName(System.getProperty("file.encoding")).newDecoder();
@@ -63,7 +65,7 @@ public class MMFastqImporter implements TagImporter
 	public static final String ACCEPTIBLE_IUPAC_CHARS = "ATGCNURYWSMKBHDV";
 	
 	/** The record buffer. */
-	private MappedByteBuffer recordBuffer;
+	private ArrayList<MappedByteBuffer> recordBuffers;
 	
 	private FlowCycler cycler;
 	
@@ -77,7 +79,7 @@ public class MMFastqImporter implements TagImporter
 	{
 		this.fastqFile = fastqFile;
 		this.logger = logger;
-		this.recordBuffer = null;
+		this.recordBuffers = new ArrayList<MappedByteBuffer>();
 		this.cycler = new FlowCycler(flowCycle, logger);
 		this.init();
 	}
@@ -87,15 +89,14 @@ public class MMFastqImporter implements TagImporter
 	 */
 	public int getNumberOfSequences()
 	{
-		return this.recordStarts.length;
+		return this.recordStarts.size();
 	}
 	
 	/**
-	 * Inits the.
+	 * Inits the file.
 	 */
 	public void init()
 	{
-		//essentially all I want to do is look for delimiters in the file.
 		try
 		{
 			_initFile();
@@ -112,82 +113,79 @@ public class MMFastqImporter implements TagImporter
 	}
 		
 	/**
-	 * _init file.
-	 *
-	 * @throws Exception the exception
+	 * Helper function for init(). Scans this.fastq file for sequence starts and records their position.
+	 * Multiple MappedByteBuffers are used to handle large files.
+	 * @throws Exceptions relating to file reading and decoding.
 	 */
 	private void _initFile() throws Exception
 	{
 		FileInputStream tempStream = new FileInputStream(new File(this.fastqFile)); 
 		FileChannel fcSeq = tempStream.getChannel();
-		
-		recordBuffer = fcSeq.map(FileChannel.MapMode.READ_ONLY, 0, fcSeq.size());
-		LinkedList <Integer> seqStartsLL = new LinkedList <Integer>();
-		
-		int maxBuffer = 2048;
-		int bufferSize = (recordBuffer.capacity() > maxBuffer)? maxBuffer: recordBuffer.capacity();
-		
-		recordBuffer.limit(bufferSize);
-		recordBuffer.position(0);
+		this.seqSizeLong = fcSeq.size();
+		this.recordStarts = new ArrayList <Pair<Integer,Long>>();
 
 		int state = -1;
-		char last = '\n';
-
-		while(recordBuffer.position() != recordBuffer.capacity())
-		{					
-			int prevPos = recordBuffer.position();
-			CharBuffer result = decoder.decode(recordBuffer);	
-			recordBuffer.position(prevPos);
+		
+        for (long startPosition = 0L; startPosition < this.seqSizeLong; startPosition += HALF_GIGA)
+        {
+        	MappedByteBuffer recordBuffer = fcSeq.map(FileChannel.MapMode.READ_ONLY, startPosition,  
+        			Math.min(this.seqSizeLong - startPosition, HALF_GIGA));
+        	this.recordBuffers.add(recordBuffer);
+        	
+        	int sbf_pos = this.recordBuffers.size() - 1;
+        	
+			int maxBuffer = 2048;
+			int bufferSize = (recordBuffer.capacity() > maxBuffer)? maxBuffer: recordBuffer.capacity();
 			
-			for(int i = 0; i < result.capacity(); i++)
-			{
-				char curr = result.charAt(i);
-				int posInFile = prevPos + i ;
-
-				//I see a fastq header, I am either at beginning of file, or last saw the quality line...
-				if(curr == BEGINNING_FASTQ_SEQ && (state == -1 || state == 4))
+			recordBuffer.limit(bufferSize);
+			recordBuffer.position(0);
+			
+			while(recordBuffer.position() != recordBuffer.capacity())
+			{					
+				int prevPos = recordBuffer.position();
+				CharBuffer result = decoder.decode(recordBuffer);	
+				recordBuffer.position(prevPos);
+				
+				for(int i = 0; i < result.capacity(); i++)
 				{
-					seqStartsLL.add(posInFile);
-					state = 1;
-					
+					char curr = result.charAt(i);
+					int posInFile = prevPos + i ;
+	
+					//I see a fastq header, I am either at beginning of file, or last saw the quality line...
+					if(curr == BEGINNING_FASTQ_SEQ && (state == -1 || state == 4))
+					{
+						this.recordStarts.add(new Pair<Integer, Long>(sbf_pos, new Long(posInFile)));
+						state = 1;
+						
+					}
+					else if (curr == BEGINNING_FASTQ_QUAL && (state == 1))
+					{
+						state = 2;
+					}
+					else if((curr ==  '\n' || curr == '\r') & state == 2)
+					{
+						state = 3;
+					}
+					else if ((curr ==  '\n' || curr == '\r') & state == 3)
+					{
+						state = 4;
+					}
 				}
-				else if (curr == BEGINNING_FASTQ_QUAL && (state == 1))
-				{
-					state = 2;
-				}
-				else if((curr ==  '\n' || curr == '\r') & state == 2)
-				{
-					state = 3;
-				}
-				else if ((curr ==  '\n' || curr == '\r') & state == 3)
-				{
-					state = 4;
-				}
-				last = curr;
+				
+				int newPos = recordBuffer.limit();
+				
+				if(recordBuffer.limit() + bufferSize > recordBuffer.capacity())
+					recordBuffer.limit(recordBuffer.capacity());
+				else
+					recordBuffer.limit(recordBuffer.limit() + bufferSize);
+				recordBuffer.position(newPos);
 			}
-			
-			int newPos = recordBuffer.limit();
-			
-			if(recordBuffer.limit() + bufferSize > recordBuffer.capacity())
-				recordBuffer.limit(recordBuffer.capacity());
-			else
-				recordBuffer.limit(recordBuffer.limit() + bufferSize);
-			recordBuffer.position(newPos);
-		}
-		
-		recordBuffer.rewind();
-		this.recordStarts = new int [seqStartsLL.size()];
-		
-		int pos = 0;
-		for(int element : seqStartsLL)
-		{
-			this.recordStarts[pos] = element;
-			pos++;
-		}
+			recordBuffer.rewind();
+        }
 	}
 	
 	/**
-	 * Checks if is printable char.
+	 * Checks if the char is printable
 	 *
 	 * @param c the c
 	 * @return true, if is printable char
@@ -200,61 +198,20 @@ public class MMFastqImporter implements TagImporter
 	            block != Character.UnicodeBlock.SPECIALS;
 	}
 	
-	//pyrotag at index.
+
 	/* (non-Javadoc)
 	 * @see pyromaniac.IO.TagImporter#getPyrotagAtIndex(int)
 	 */
-	public Pyrotag getPyrotagAtIndex(int index)
+	public Pyrotag getPyrotagAtIndex(int index) throws Exception
 	{
-		if(index >= this.recordStarts.length)
+		if(index >= this.recordStarts.size())
 			return null;
 		
-		char [] relRecordBlock = getBlock(this.recordStarts, index, this.recordBuffer);
-		
+		char [] relRecordBlock = getBlock(this.recordStarts, index, this.recordBuffers);
 		//construct the pyrotag in this block.
 		Pyrotag p = processRecordBlock(relRecordBlock);
 		p.setInternalID(index);
 		return p;
-	}
-	
-	/**
-	 * Gets the block.
-	 *
-	 * @param starts the starts
-	 * @param index the index
-	 * @param buff the buff
-	 * @return the block
-	 */
-	public char [] getBlock(int [] starts, int index, MappedByteBuffer buff)
-	{
-		if(index  >= starts.length)
-		{
-			return null;
-		
-		}
-		
-		long blockStart = starts[index];
-		long blockEnd = blockStart;
-		if(index == starts.length - 1)
-			blockEnd = buff.capacity(); 
-		else
-			blockEnd = starts[index + 1];
-
-		try
-		{
-			buff.limit((int)blockEnd);
-			buff.position((int)blockStart);
-			CharBuffer resBuffer = decoder.decode(buff);
-			buff.rewind();
-			return resBuffer.array();
-		}
-		catch(Exception e)
-		{
-			System.out.println("Error: " + e.getMessage());
-			System.out.println("Tried to get block starting at " + blockStart + " for " + (blockEnd - blockStart + 1) + " chars");
-			System.out.println("The maximum block size is " + buff.limit());
-		}
-		return null;
 	}
 	
 	/**
@@ -334,7 +291,6 @@ public class MMFastqImporter implements TagImporter
 			char curr;
 			int index = pos.value();
 			
-			
 			//push through newlines
 			while(index < pyrotagBlock.length)
 			{
@@ -345,7 +301,6 @@ public class MMFastqImporter implements TagImporter
 				
 				index++;
 			}
-			
 			
 			//should be in nucleotides
 			while(index < pyrotagBlock.length)
@@ -402,7 +357,7 @@ public class MMFastqImporter implements TagImporter
 			index++;
 		}
 	
-		//qualities should be here...
+		//qualities should be here.
 		while(index < pyrotagBlock.length)
 		{
 			curr = pyrotagBlock[index];	
@@ -476,7 +431,7 @@ public class MMFastqImporter implements TagImporter
 	 */
 	public void closeFiles() 
 	{
-		// TODO Auto-generated method stub
+		this.recordBuffers.clear();
 		
 	}
 }

@@ -32,9 +32,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -47,27 +45,22 @@ import pyromaniac.IO.MMFastaImporter;
 import pyromaniac.IO.MMFastqImporter;
 import pyromaniac.IO.StandardOutputHandle;
 import pyromaniac.IO.TagImporter;
-import pyromaniac.Algorithm.BinomialTest;
 import pyromaniac.Algorithm.ClusterGenerator;
 import pyromaniac.Algorithm.CoarseAlignSplitter;
 import pyromaniac.Algorithm.ConsensusGeneratorLocalTests;
 import pyromaniac.Algorithm.ConsensusGeneratorLocalTests.UnprocessedPyrotagResult;
-import pyromaniac.Algorithm.HypothesisTest;
 import pyromaniac.Algorithm.IonTorrentOUCallFrequencyTable;
 import pyromaniac.Algorithm.BalzerOUCallFrequencyTable;
-import pyromaniac.Algorithm.MultinomialOneSidedTest;
 import pyromaniac.Algorithm.OUFrequencyTable;
 import pyromaniac.Algorithm.OligomerClusterGenerator;
 import pyromaniac.Algorithm.SimpleClusterAligner;
 import pyromaniac.Algorithm.RLEAlignmentIndelsOnly;
-import pyromaniac.Algorithm.RLEAlignmentIndelsOnly.AlignmentColumn;
 import pyromaniac.DataStructures.FlowCycler;
 import pyromaniac.DataStructures.MIDPrimerCombo;
 import pyromaniac.DataStructures.Pair;
 import pyromaniac.DataStructures.PatriciaTrie;
 import pyromaniac.DataStructures.Pyrotag;
 import pyromaniac.DataStructures.MutableInteger;
-import pyromaniac.DataStructures.Triplet;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -588,7 +581,7 @@ public class AcaciaEngine
 							///can I pass in the alignment singletons here... to see if they will align using a substitution only aligner? 
 
 							//this was the way the consensus was generated in the original acacia
-							boolean originalConsensusGeneration = true;
+							boolean originalConsensusGeneration = true; //TODO: new code requires testing
 							
 							if(originalConsensusGeneration)
 							{

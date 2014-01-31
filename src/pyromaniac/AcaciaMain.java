@@ -72,7 +72,7 @@ import pyromaniac.IO.AcaciaLogger;
 
 // TODO: Auto-generated Javadoc
 /**
- * AcaciaMain contains the main method for the Acacia software package. It gets the run paramters from either the command line,
+ * AcaciaMain contains the main method for the Acacia software package. It gets the run parameters from either the command line,
  * config file or GUI as indicated by the user, and then starts the AcaciaEngine.
  */
 public class AcaciaMain 
@@ -1032,7 +1032,7 @@ public class AcaciaMain
 			URL wattleLoc = getClass().getResource(WATTLE_LOC);
 			
 			if(wattleLoc == null)
-			System.out.println("File could not be found");
+				System.out.println("File could not be found: " + WATTLE_LOC);
 			
 			this.setIconImage(new ImageIcon(wattleLoc).getImage());
 			this.addWindowListener(new MainFrameListener(this));

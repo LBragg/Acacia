@@ -220,7 +220,7 @@ public class TagInputPanel extends JPanel implements ActionListener,ListSelectio
 	private static final String OPTION_NO_MIDS = "Ignore MIDs";
 	
 	/** The Constant FIND_PROJECT_DIR. */
-	private static final String FIND_PROJECT_DIR = "Select directory to save project:";
+	private static final String FIND_PROJECT_DIR = "Select output directory:";
 	
 	/** The Constant SUBMIT_FORM. */
 	private static final String SUBMIT_FORM = "Submit form";
@@ -334,7 +334,7 @@ private static final String [] optionsSignificance = new String [] {"0", "-1", "
 
 	
 	/** The Constant DEFAULT_BUTTON_WIDTH. */
-	private static final int DEFAULT_BUTTON_WIDTH = 100;
+	private static final int DEFAULT_BUTTON_WIDTH = 110;
 	
 	/** The Constant MIN_QUALITY_SCORE. */
 	private static final int MIN_QUALITY_SCORE = 1;
@@ -460,7 +460,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		Border basic = BorderFactory.createLineBorder(TagInputPanel.BORDER_COLOUR, 2);
 		Dimension enclosingBGDimensions = new Dimension(parentWidth - 5, maxPanelHeight - 15);
 		
-		System.out.println("The enclosing BG dimensions are: " + enclosingBGDimensions.width + " , " + enclosingBGDimensions.height);
+//		System.out.println("The enclosing BG dimensions are: " + enclosingBGDimensions.width + " , " + enclosingBGDimensions.height);
 		
 		this.enclosingBG = new JPanel();
 		this.enclosingBG.setMinimumSize(enclosingBGDimensions);
@@ -748,15 +748,16 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		JButton clear = new AcaciaGradientButton("Clear", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED); 	
 		clear.setActionCommand(CLEAR_FORM);
 		clear.addActionListener(this);
+
 		
 		this.cancel = new AcaciaGradientButton("Cancel", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
 		cancel.setActionCommand(CANCEL_RUN);
 		cancel.addActionListener(this);
 		cancel.setEnabled(false);
 		
-		this.setDimensionsToDefault(submit);
-		this.setDimensionsToDefault(clear);
-		this.setDimensionsToDefault(cancel);
+		this.setLargeButtonSize(submit);
+		this.setLargeButtonSize(clear);
+		this.setLargeButtonSize(cancel);
 		
 		submitOrClearPanel.add(submit);
 		submitOrClearPanel.add(clear);
@@ -803,7 +804,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		JButton openFile = new AcaciaGradientButton("Browse...", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2,TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
 		openFile.setActionCommand(FIND_PROJECT_DIR);
 		openFile.addActionListener(this);
-		this.setDimensionsToDefault(openFile);
+		this.setLargeButtonSize(openFile);
 
 		this.outputDir = new JTextField("");
 		this.setTextFieldSize(this.outputDir);
@@ -910,7 +911,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		Dimension ffd = fileFormatInnerPanel.getPreferredSize();
 		dataFormat.add(this.formatCardPanel);
 		SpringUtilities.makeCompactGrid(dataFormat, 2, 1, 0, 0, 5, 5);	
-		SpringUtilities.printSizes(dataFormat);
+//		SpringUtilities.printSizes(dataFormat);
 		
 		Dimension minSize = dataFormat.getMinimumSize();
 		dataFormat.setPreferredSize(minSize);
@@ -1259,7 +1260,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			return;
 		}
 
-		System.out.println("The file path is <" + filename + ">");
+//		System.out.println("The file path is <" + filename + ">");
 		
 		MIDReader mReader = new MIDReader(filename);
 		
@@ -1805,7 +1806,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			JButton openFile = new AcaciaGradientButton("Browse...",TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
 			openFile.setActionCommand(FIND_FASTQ);
 			openFile.addActionListener(this);
-			this.setDimensionsToDefault(openFile);
+			this.setLargeButtonSize(openFile);
 			
 			this.fastqFileChoice = new JTextField("");
 			setTextFieldSize(this.fastqFileChoice);
@@ -1836,6 +1837,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			JButton openFileFasta = new AcaciaGradientButton("Browse...",TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2,TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
 			openFileFasta.setActionCommand(FIND_FASTA);
 			openFileFasta.addActionListener(this);
+			this.setLargeButtonSize(openFileFasta);
 			
 			this.fastaFileChoice = new JTextField("");
 			setTextFieldSize(this.fastaFileChoice);
@@ -1848,6 +1850,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 			JButton openFileQual = new AcaciaGradientButton("Browse...", TagInputPanel.BUTTON_GRADIENT_COLOR1, TagInputPanel.BUTTON_GRADIENT_COLOR2, TagInputPanel.BUTTON_BORDER_COLOR, AcaciaGradientButton.CENTERED);
 			openFileQual.setActionCommand(FIND_QUAL);
 			openFileQual.addActionListener(this);
+			this.setLargeButtonSize(openFileFasta);
 			
 			this.qualFileChoice = new JTextField("");
 			this.setTextFieldSize(this.qualFileChoice);
@@ -1880,6 +1883,17 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		component.setSize(preferredSize);
 		component.setPreferredSize(preferredSize);
 		component.setMaximumSize(preferredSize);
+	}
+	
+	public void setLargeButtonSize(JButton component)
+	{
+		Dimension d = component.getPreferredSize();
+		d.width = DEFAULT_BUTTON_WIDTH;
+		d.height = DEFAULT_PREFERRED_FIELD_HEIGHT;
+		component.setPreferredSize(d);
+		component.setSize(d);
+		component.setMinimumSize(d);
+		component.setMaximumSize(d);
 	}
 	
 	/**
@@ -2117,7 +2131,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 	{
 		URL imgURL = getClass().getResource(path);
 		
-		System.out.println(imgURL.getPath());
+//		System.out.println(imgURL.getPath());
 	
 		if (imgURL != null) 
 		{
@@ -2125,7 +2139,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 				JLabel label = new JLabel("", image, JLabel.CENTER);
 				Dimension sizeOfIcon = new Dimension(image.getIconWidth(), image.getIconHeight());
 				
-				System.out.println("Size of icon " + sizeOfIcon.width + ", " + sizeOfIcon.height);
+//				System.out.println("Size of icon " + sizeOfIcon.width + ", " + sizeOfIcon.height);
 				
 				label.setMinimumSize(sizeOfIcon);
 				label.setPreferredSize(sizeOfIcon);
@@ -2141,7 +2155,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 		//		panel.setMinimumSize(label.getPreferredSize());
 				panel.setSize(label.getPreferredSize());
 				
-				System.out.println("Size of panel is " + panel.getPreferredSize().width + ", " + panel.getPreferredSize().height);
+//				System.out.println("Size of panel is " + panel.getPreferredSize().width + ", " + panel.getPreferredSize().height);
 				
 				return panel; 
 		} 
@@ -2175,7 +2189,7 @@ private static final String CLEAR_FORM = "CLEAR_FORM";
 				JButton imageButton = new JButton("", image);
 				Dimension sizeOfIcon = new Dimension(image.getIconWidth(), image.getIconHeight());
 				
-				System.out.println("Size of icon " + sizeOfIcon.width + ", " + sizeOfIcon.height);
+//				System.out.println("Size of icon " + sizeOfIcon.width + ", " + sizeOfIcon.height);
 				
 				imageButton.setMinimumSize(sizeOfIcon);
 				imageButton.setPreferredSize(sizeOfIcon);

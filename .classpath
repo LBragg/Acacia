@@ -2,23 +2,29 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/biojava.jar" sourcepath="E:/Eclipse/workspace/3rd_party/biojava-1.7.1-all.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/biojava-1.7.1-all.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/classmexer-0_03.zip"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/ssj.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/Blas.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/colt.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/commons-cli-1.2/commons-cli-1.2.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/tcode.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/optimization.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/logger-1.6.4.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/jcommon-1.0.13.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/event-1.6.5.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/ssj-20100908/ssj/lib/interpreter-1.6.8.jar"/>
-	<classpathentry kind="lib" path="E:/Work_Documents/Eclipse/workspace/3rd_party/commons-math-2.1/commons-math-2.1/commons-math-2.1.jar">
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/ssj.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/blas.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/colt.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/commons-cli-1.2/commons-cli-1.2.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/tcode.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/logger-1.6.4.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/jcommon-1.0.13.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/event-1.6.5.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/interpreter-1.6.8.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/commons-math3-3.1.1/commons-math3-3.1.1.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="file:/E:/Eclipse/workspace/3rd_party/commons-math-2.1/commons-math-2.1/docs/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/biojava.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/ssj/lib/optimization.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/hac"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/appframework-1.0.3.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/swing-layout-1.0.3.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/swing-worker-1.1.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/netbeans-7.4/platform/modules/org-netbeans-swing-outline.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/Projects/AcaciaDevelopment/ThirdParty/commons-io-2.4/commons-io-2.4.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/netbeans-7.4/platform/modules/org-openide-explorer.jar"/>
+	<classpathentry kind="lib" path="/home/bra427/netbeans-7.4/platform/modules/org-openide-nodes.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

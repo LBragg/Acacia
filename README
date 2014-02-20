@@ -1,0 +1,52 @@
+***(%%%%%)*\\**********************************************                 
+****(%%%) _/\\*********************************************  
+******** _\\_ \\  ___**************************************
+******* / |  \\\//** \/\''\***   _____                    *
+****** /  |  /(%%%)**/  \  \**  (, /  |             ,     *
+****** \  | /(%%%%%)*\   \  \*    /---|  _  _   _     _   *
+******* \  / (%%%%%)**\   \ |* ) /    |_(__(_(_(___(_(_(_ *
+******** \/***(%%%)\\**\  | |*(_/                         *
+********************\\**\ |/**                            * 
+******************** \\**\/********************************
+***********************************************************
+
+
+
+SOFTWARE Acacia
+
+SOFTWARE 1.53-b0 (Release 1.53)
+
+
+
+Software by Lauren Bragg and Glenn Stone 2010-2014
+
+Contact: lauren.bragg@csiro.au
+
+
+
+INSTALLATION NOTES
+
+See associated documentation for running this program.
+
+This release consists of feature improvement and bug fixes (sorry -- no Ion Torrent correction yet, their new BAM format has some issues).
+
+
+NEW FEATURES
+
+#1 Can now perform hexamer clustering in Acacia without correction (using the "CLUSTER_ONLY=TRUE" flag). This allows you to run Acacia on each cluster separately, minimising the
+maximum memory required and allowing the processing to be distributed across threads and/or cluster nodes. If you need help distributing your run across threads, please contact Lauren.
+
+
+BUG FIXES
+
+#1 Acacia can now use input files larger than 2GB (thanks for spotting this, Henning Seedorf).
+
+#2 Addressed Bug (GitHub #3) -- buttons truncated in GUI
+
+
+
+
+KNOWN ISSUES (that will be addressed in a future release)
+
+#1 Not all parameters are available through the GUI interface, this will be amended in future versions of Acacia
+

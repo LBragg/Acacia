@@ -526,7 +526,6 @@ public class AcaciaEngine
 				boolean outputClusterMemberships = Boolean.parseBoolean(hexClustOnly); 
 				int clusterID = 0;
 				
-				//do we need all those other output files... how do I never open them...
 				if(outputClusterMemberships)
 				{
 					logger.writeLog("Creating fasta files per sequence cluster...", AcaciaLogger.LOG_PROGRESS);
@@ -539,8 +538,7 @@ public class AcaciaEngine
 						BufferedWriter hexOutBuff = new BufferedWriter (new FileWriter (new File(hexOut), false));
 						
 						logger.writeLog("Outputting cluster of size: " + perfectClusters.get(clusterRep).size(), AcaciaLogger.LOG_PROGRESS);
-						
-						
+								
 						for(Pyrotag p: perfectClusters.get(clusterRep))
 						{
 							outputSequence(settings, hexOutBuff, new String(p.getProcessedString()), p);

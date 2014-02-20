@@ -447,7 +447,7 @@ public class AcaciaMain
 	 */
 	private void runGUI()
 	{
-		System.out.println("Running from GUI");
+	//	System.out.println("Running from GUI");
 		GUIRunnable mine = this.new GUIRunnable(this);
 		javax.swing.SwingUtilities.invokeLater(mine);	
 	}
